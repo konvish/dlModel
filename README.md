@@ -1,0 +1,3 @@
+# dlModel
+DeepLearning4j和BigDL试用项目
+使用ND4j实现ng的深度学习课程
