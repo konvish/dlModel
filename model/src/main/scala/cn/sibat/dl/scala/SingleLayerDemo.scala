@@ -27,7 +27,7 @@ class SingleLayerDemo(var weight_1: INDArray, var weight_2: INDArray, var bias_1
   }
 
   /**
-    * 批量梯度下降求解
+    * 随机梯度下降求解
     *
     * @param trainData 数据
     * @param label     label
@@ -51,10 +51,6 @@ class SingleLayerDemo(var weight_1: INDArray, var weight_2: INDArray, var bias_1
       bias_1.subi(db_1.mul(learningRate).transpose())
       weight_2.subi(dw_2.mul(learningRate))
       bias_2.subi(db_2.mul(learningRate))
-      println(weight_1)
-      println(weight_2)
-      println(bias_1)
-      println(bias_2)
       diff += -(label.getRow(i).getDouble(0) * math.log(a_2.getDouble(0)) + (1 - label.getRow(i).getDouble(0)) * math.log(1 - a_2.getDouble(0)))
     }
     diff / label.length()
