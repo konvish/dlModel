@@ -24,16 +24,16 @@ class DeepLayerDemo(n: Int, array: Array[Int]) {
     require(n == array.length)
     for (i <- 0 until n) {
       if (i == 0) {
-        weight(i) = Nd4j.randn(inputDimension, array(i))
+        weight(i) = Nd4j.rand(inputDimension, array(i))
         //weight(i) = Nd4j.ones(inputDimension, array(i))
       } else {
-        weight(i) = Nd4j.randn(array(i - 1), array(i))
+        weight(i) = Nd4j.rand(array(i - 1), array(i))
         //weight(i) = Nd4j.ones(array(i - 1), array(i))
       }
       bias(i) = Nd4j.ones(array(i))
     }
-    weight(0) = Nd4j.create(Array(0.2, 0.5, 0.7, 0.2, 0.5, 0.7, 0.2, 0.5, 0.7), Array(3, 3))
-    weight(1) = Nd4j.create(Array(0.2, 0.5, 0.7), Array(3, 1))
+    //    weight(0) = Nd4j.create(Array(0.2, 0.5, 0.7, 0.2, 0.5, 0.7, 0.2, 0.5, 0.7), Array(3, 3))
+    //    weight(1) = Nd4j.create(Array(0.2, 0.5, 0.7), Array(3, 1))
   }
 
   /**
@@ -68,8 +68,8 @@ class DeepLayerDemo(n: Int, array: Array[Int]) {
     for (i <- 0 until label.length()) {
       val z = new Array[INDArray](n)
       val a = new Array[INDArray](n + 1)
-      val da = new Array[INDArray](n)
-      val dz = new Array[INDArray](n)
+      val da = new Array[INDArray](n) //行向量
+      val dz = new Array[INDArray](n) //列向量
       val dw = new Array[INDArray](n)
       val db = new Array[INDArray](n)
       a(0) = trainData.getRow(i)
@@ -82,7 +82,7 @@ class DeepLayerDemo(n: Int, array: Array[Int]) {
         if (j == n - 1) {
           dz(j) = a(j + 1).dup().sub(label.getRow(i))
         } else {
-          dz(j) = weight(j + 1).mul(dz(j + 1)).mul(da(j).transpose()) //1*3
+          dz(j) = weight(j + 1).mmul(dz(j + 1)).mul(da(j).transpose()) //1*3
         }
         dw(j) = dz(j).mmul(a(j)).transpose() //1*3
         db(j) = dz(j)
@@ -102,7 +102,7 @@ object DeepLayerDemo {
     val train = Nd4j.create(Array(0.10, 1.0, 0.10, -0.20, -0.6, -0.3, 0.2, 1.0, 0.1, 0.2, -0.6, -0.3,
       -2.0, -6.0, 0.0, -2.0, 0.6, -0.3, 0.1, 1.0, 0.1, -0.2, -0.6, -0.3, 0.1, 1.5, 0.1, 0.1, 1.0, 0.5), Array(10, 3))
     val label = Nd4j.create(Array(0.0, 1.0, 0.0, 1.0, 1.0, 1.0, 0.0, 1.0, 0.0, 0.0), Array(10, 1))
-    val lr = new DeepLayerDemo(2, Array(3, 1))
+    val lr = new DeepLayerDemo(4, Array(3, 4, 5, 1))
     lr.init(3)
     for (i <- 0 to 10000) {
       val model = lr.fitSGD(train, label)
@@ -113,9 +113,9 @@ object DeepLayerDemo {
       lr.bias.foreach(id => println(id))
     }
 
-    val weight1 = Nd4j.create(Array(1.68,  1.88,  1.97, 2.72,  3.05,  3.19, 1.30,  1.64,  1.81), Array(3, 3))
-    val weight2 = Nd4j.create(Array(-3.63,  -4.60,  -5.04), Array(1, 3))
-    val bias1 = Nd4j.create(Array(-0.68,  -0.76,  -0.78), Array(1, 3))
+    val weight1 = Nd4j.create(Array(1.73, 2.17, 1.74, 2.46, 3.52, 3.01, 1.10, 1.30, 2.00), Array(3, 3))
+    val weight2 = Nd4j.create(Array(-3.05, -5.55, -4.61), Array(1, 3))
+    val bias1 = Nd4j.create(Array(-0.52, -0.90, -0.75), Array(1, 3))
     val bias2 = Nd4j.create(Array(6.13), Array(1, 1))
     val z_1 = train.mmul(weight1.transpose()).addRowVector(bias1) //10*3
     val a_1 = Nd4j.getExecutioner.execAndReturn(new Sigmoid(z_1.dup())) //10*3
