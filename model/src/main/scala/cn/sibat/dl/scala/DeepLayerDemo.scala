@@ -44,16 +44,36 @@ class DeepLayerDemo(n: Int, array: Array[Int]) {
     * @return
     */
   def fitBGD(trainData: INDArray, label: INDArray): Double = {
-    //    val z = trainData.mmul(weight_1.transpose()).add(bias_1)
-    //    val a = Nd4j.getExecutioner.execAndReturn(new Sigmoid(z.dup()))
-    //    val dz = a.dup().sub(label)
-    //    weight_1.subi(trainData.mulColumnVector(dz).mul(learningRate).sum(0))
-    //    bias_1.subi(dz.mul(learningRate).sum(0))
-    //    val left = label.mul(Nd4j.getExecutioner.execAndReturn(new Log(a)))
-    //    val right = label.mul(-1).add(1).mul(Nd4j.getExecutioner.execAndReturn(new Log(a.mul(-1).add(1))))
-    //    val diff = left.add(right).mul(-1)
-    //    diff.sumNumber().doubleValue() / label.length()
-    0.0
+    val z = new Array[INDArray](n)
+    val a = new Array[INDArray](n + 1)
+    val da = new Array[INDArray](n) //行向量
+    val dz = new Array[INDArray](n) //列向量
+    val dw = new Array[INDArray](n)
+    val db = new Array[INDArray](n)
+    a(0) = trainData
+    for (i <- 0 until n) {
+      z(i) = a(i).mmul(weight(i)).addRowVector(bias(i)) //10*1
+      a(i + 1) = Nd4j.getExecutioner.execAndReturn(new Sigmoid(z(i).dup()))
+      da(i) = Nd4j.getExecutioner.execAndReturn(new Sigmoid(z(i).dup()).derivative())
+    }
+
+    for (i <- n - 1 to 0 by -1) {
+      if (i == n - 1)
+        dz(i) = a(i + 1).sub(label)
+      else {
+        dz(i) = weight(i + 1).mmul(dz(i + 1).transpose()).transpose().mul(da(i))
+      }
+      dw(i) = dz(i).transpose().mmul(a(i)).div(label.length()) //1*3
+      db(i) = dz(i).sum(0).div(label.length()).transpose()
+    }
+    for (j <- 0 until n) {
+      weight(j).subi(dw(j).mul(learningRate).transpose())
+      bias(j).subi(db(j).mul(learningRate).transpose())
+    }
+    val left = label.mul(Nd4j.getExecutioner.execAndReturn(new Log(a(n))))
+    val right = label.mul(-1).add(1).mul(Nd4j.getExecutioner.execAndReturn(new Log(a(n).mul(-1).add(1))))
+    val diff = left.add(right).mul(-1)
+    diff.sumNumber().doubleValue() / label.length()
   }
 
   /**
@@ -102,10 +122,10 @@ object DeepLayerDemo {
     val train = Nd4j.create(Array(0.10, 1.0, 0.10, -0.20, -0.6, -0.3, 0.2, 1.0, 0.1, 0.2, -0.6, -0.3,
       -2.0, -6.0, 0.0, -2.0, 0.6, -0.3, 0.1, 1.0, 0.1, -0.2, -0.6, -0.3, 0.1, 1.5, 0.1, 0.1, 1.0, 0.5), Array(10, 3))
     val label = Nd4j.create(Array(0.0, 1.0, 0.0, 1.0, 1.0, 1.0, 0.0, 1.0, 0.0, 0.0), Array(10, 1))
-    val lr = new DeepLayerDemo(4, Array(3, 4, 5, 1))
+    val lr = new DeepLayerDemo(2, Array(3, 1))
     lr.init(3)
-    for (i <- 0 to 10000) {
-      val model = lr.fitSGD(train, label)
+    for (i <- 0 to 100000) {
+      val model = lr.fitBGD(train, label)
       println(model)
       println("weight")
       lr.weight.foreach(id => println(id))
@@ -113,9 +133,9 @@ object DeepLayerDemo {
       lr.bias.foreach(id => println(id))
     }
 
-    val weight1 = Nd4j.create(Array(1.73, 2.17, 1.74, 2.46, 3.52, 3.01, 1.10, 1.30, 2.00), Array(3, 3))
-    val weight2 = Nd4j.create(Array(-3.05, -5.55, -4.61), Array(1, 3))
-    val bias1 = Nd4j.create(Array(-0.52, -0.90, -0.75), Array(1, 3))
+    val weight1 = Nd4j.create(Array(2.13,  1.65,  1.83, 3.54,  2.84,  2.53, 1.88,  1.51,  1.18), Array(3, 3))
+    val weight2 = Nd4j.create(Array(-6.06,  -3.93,  -3.23), Array(1, 3))
+    val bias1 = Nd4j.create(Array(-0.88,  -0.72,  -0.53), Array(1, 3))
     val bias2 = Nd4j.create(Array(6.13), Array(1, 1))
     val z_1 = train.mmul(weight1.transpose()).addRowVector(bias1) //10*3
     val a_1 = Nd4j.getExecutioner.execAndReturn(new Sigmoid(z_1.dup())) //10*3
