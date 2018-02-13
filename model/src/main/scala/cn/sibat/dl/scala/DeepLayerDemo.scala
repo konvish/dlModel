@@ -11,9 +11,13 @@ import org.nd4j.linalg.factory.Nd4j
   * @param array 每一层对应的节点数
   */
 class DeepLayerDemo(n: Int, array: Array[Int]) {
-  val learningRate = 0.01
+  var learningRate = 0.01
   val weight = new Array[INDArray](n)
   val bias = new Array[INDArray](n)
+
+  def setLearningRate(learningRate: Double): Unit = {
+    this.learningRate = learningRate
+  }
 
   /**
     * 初始化网络参数
@@ -118,29 +122,60 @@ class DeepLayerDemo(n: Int, array: Array[Int]) {
 }
 
 object DeepLayerDemo {
+
+  /**
+    * 结果验证
+    *
+    * @param weight    权重
+    * @param bias      偏差
+    * @param n         层数
+    * @param trainData 训练数据
+    * @param labelData 标签数据
+    * @return
+    */
+  def validate(weight: Array[INDArray], bias: Array[INDArray], n: Int, trainData: INDArray, labelData: INDArray): INDArray = {
+    val z = new Array[INDArray](n)
+    val a = new Array[INDArray](n + 1)
+    a(0) = trainData
+    for (i <- 0 until n) {
+      z(i) = a(i).mmul(weight(i)).addRowVector(bias(i)) //10*1
+      a(i + 1) = Nd4j.getExecutioner.execAndReturn(new Sigmoid(z(i).dup()))
+    }
+    a(n)
+  }
+
   def main(args: Array[String]): Unit = {
     val train = Nd4j.create(Array(0.10, 1.0, 0.10, -0.20, -0.6, -0.3, 0.2, 1.0, 0.1, 0.2, -0.6, -0.3,
       -2.0, -6.0, 0.0, -2.0, 0.6, -0.3, 0.1, 1.0, 0.1, -0.2, -0.6, -0.3, 0.1, 1.5, 0.1, 0.1, 1.0, 0.5), Array(10, 3))
     val label = Nd4j.create(Array(0.0, 1.0, 0.0, 1.0, 1.0, 1.0, 0.0, 1.0, 0.0, 0.0), Array(10, 1))
-    val lr = new DeepLayerDemo(2, Array(3, 1))
+    val n = 4
+    //当中间层数的节点为1时，难以学习到规则
+    //val lr = new DeepLayerDemo(n, Array(3, 7, 5, 1, 6, 8, 8, 4, 6, 1))
+    val lr = new DeepLayerDemo(n, Array(3, 7, 3, 1))
     lr.init(3)
+    lr.setLearningRate(0.01)
     for (i <- 0 to 100000) {
-      val model = lr.fitBGD(train, label)
-      println(model)
-      println("weight")
-      lr.weight.foreach(id => println(id))
-      println("bias")
-      lr.bias.foreach(id => println(id))
+      val model = lr.fitSGD(train, label)
+      if (i % 1000 == 0)
+        println(i + ":" + model)
     }
 
-    val weight1 = Nd4j.create(Array(2.13,  1.65,  1.83, 3.54,  2.84,  2.53, 1.88,  1.51,  1.18), Array(3, 3))
-    val weight2 = Nd4j.create(Array(-6.06,  -3.93,  -3.23), Array(1, 3))
-    val bias1 = Nd4j.create(Array(-0.88,  -0.72,  -0.53), Array(1, 3))
-    val bias2 = Nd4j.create(Array(6.13), Array(1, 1))
-    val z_1 = train.mmul(weight1.transpose()).addRowVector(bias1) //10*3
-    val a_1 = Nd4j.getExecutioner.execAndReturn(new Sigmoid(z_1.dup())) //10*3
-    val z_2 = a_1.mmul(weight2.transpose()).add(bias2) //10*1
-    val a_2 = Nd4j.getExecutioner.execAndReturn(new Sigmoid(z_2.dup())) //10*1
-    println(a_2)
+    println("weight")
+    lr.weight.foreach(id => println(id))
+    println("bias")
+    lr.bias.foreach(id => println(id))
+
+    //    val weight1 = Nd4j.create(Array(2.13, 1.65, 1.83, 3.54, 2.84, 2.53, 1.88, 1.51, 1.18), Array(3, 3))
+    //    val weight2 = Nd4j.create(Array(-6.06, -3.93, -3.23), Array(1, 3))
+    //    val bias1 = Nd4j.create(Array(-0.88, -0.72, -0.53), Array(1, 3))
+    //    val bias2 = Nd4j.create(Array(6.13), Array(1, 1))
+    //    val z_1 = train.mmul(weight1.transpose()).addRowVector(bias1) //10*3
+    //    val a_1 = Nd4j.getExecutioner.execAndReturn(new Sigmoid(z_1.dup())) //10*3
+    //    val z_2 = a_1.mmul(weight2.transpose()).add(bias2) //10*1
+    //    val a_2 = Nd4j.getExecutioner.execAndReturn(new Sigmoid(z_2.dup())) //10*1
+    //    println(a_2)
+
+    //validate
+    println(validate(lr.weight, lr.bias, n, train, label))
   }
 }
