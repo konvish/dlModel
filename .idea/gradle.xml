@@ -10,7 +10,12 @@
         <option name="modules">
           <set>
             <option value="$PROJECT_DIR$" />
-            <option value="$PROJECT_DIR$/model" />
+            <option value="$PROJECT_DIR$/datavec" />
+            <option value="$PROJECT_DIR$/dl4j-cuda-specific" />
+            <option value="$PROJECT_DIR$/dl4j-spark" />
+            <option value="$PROJECT_DIR$/lstm-hdfs" />
+            <option value="$PROJECT_DIR$/nd4j" />
+            <option value="$PROJECT_DIR$/rl4j" />
           </set>
         </option>
       </GradleProjectSettings>

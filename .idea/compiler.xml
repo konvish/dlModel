@@ -2,10 +2,22 @@
 <project version="4">
   <component name="CompilerConfiguration">
     <bytecodeTargetLevel>
+      <module name="datavec_main" target="1.8" />
+      <module name="datavec_test" target="1.8" />
+      <module name="dl4j-cuda-specific_main" target="1.8" />
+      <module name="dl4j-cuda-specific_test" target="1.8" />
+      <module name="dl4j-spark_main" target="1.8" />
+      <module name="dl4j-spark_test" target="1.8" />
       <module name="dlModel_main" target="1.8" />
       <module name="dlModel_test" target="1.8" />
+      <module name="lstm-hdfs_main" target="1.8" />
+      <module name="lstm-hdfs_test" target="1.8" />
       <module name="model_main" target="1.8" />
       <module name="model_test" target="1.8" />
+      <module name="nd4j_main" target="1.8" />
+      <module name="nd4j_test" target="1.8" />
+      <module name="rl4j_main" target="1.8" />
+      <module name="rl4j_test" target="1.8" />
     </bytecodeTargetLevel>
   </component>
 </project>

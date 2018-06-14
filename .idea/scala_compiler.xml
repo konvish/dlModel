@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ScalaCompilerConfiguration">
-    <profile name="Gradle 1" modules="model_main,model_test">
+    <profile name="Gradle 1" modules="model_main,model_test,datavec_main,datavec_test,dl4j-cuda-specific_main,dl4j-cuda-specific_test,dl4j-spark_main,dl4j-spark_test,lstm-hdfs_main,lstm-hdfs_test,nd4j_main,nd4j_test,rl4j_main,rl4j_test">
       <option name="deprecationWarnings" value="true" />
       <option name="uncheckedWarnings" value="true" />
       <parameters>

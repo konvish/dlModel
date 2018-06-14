@@ -2,12 +2,27 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/datavec.iml" filepath="$PROJECT_DIR$/.idea/modules/datavec.iml" group="datavec" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/datavec/datavec_main.iml" filepath="$PROJECT_DIR$/.idea/modules/datavec/datavec_main.iml" group="datavec" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/datavec/datavec_test.iml" filepath="$PROJECT_DIR$/.idea/modules/datavec/datavec_test.iml" group="datavec" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/dl4j-cuda-specific.iml" filepath="$PROJECT_DIR$/.idea/modules/dl4j-cuda-specific.iml" group="dl4j-cuda-specific" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/dl4j-cuda-specific/dl4j-cuda-specific_main.iml" filepath="$PROJECT_DIR$/.idea/modules/dl4j-cuda-specific/dl4j-cuda-specific_main.iml" group="dl4j-cuda-specific" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/dl4j-cuda-specific/dl4j-cuda-specific_test.iml" filepath="$PROJECT_DIR$/.idea/modules/dl4j-cuda-specific/dl4j-cuda-specific_test.iml" group="dl4j-cuda-specific" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/dl4j-spark.iml" filepath="$PROJECT_DIR$/.idea/modules/dl4j-spark.iml" group="dl4j-spark" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/dl4j-spark/dl4j-spark_main.iml" filepath="$PROJECT_DIR$/.idea/modules/dl4j-spark/dl4j-spark_main.iml" group="dl4j-spark" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/dl4j-spark/dl4j-spark_test.iml" filepath="$PROJECT_DIR$/.idea/modules/dl4j-spark/dl4j-spark_test.iml" group="dl4j-spark" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/dlModel.iml" filepath="$PROJECT_DIR$/.idea/modules/dlModel.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/dlModel_main.iml" filepath="$PROJECT_DIR$/.idea/modules/dlModel_main.iml" group="dlModel" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/dlModel_test.iml" filepath="$PROJECT_DIR$/.idea/modules/dlModel_test.iml" group="dlModel" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/model.iml" filepath="$PROJECT_DIR$/.idea/modules/model.iml" group="model" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/model/model_main.iml" filepath="$PROJECT_DIR$/.idea/modules/model/model_main.iml" group="model" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/model/model_test.iml" filepath="$PROJECT_DIR$/.idea/modules/model/model_test.iml" group="model" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/lstm-hdfs.iml" filepath="$PROJECT_DIR$/.idea/modules/lstm-hdfs.iml" group="lstm-hdfs" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/lstm-hdfs/lstm-hdfs_main.iml" filepath="$PROJECT_DIR$/.idea/modules/lstm-hdfs/lstm-hdfs_main.iml" group="lstm-hdfs" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/lstm-hdfs/lstm-hdfs_test.iml" filepath="$PROJECT_DIR$/.idea/modules/lstm-hdfs/lstm-hdfs_test.iml" group="lstm-hdfs" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/nd4j.iml" filepath="$PROJECT_DIR$/.idea/modules/nd4j.iml" group="nd4j" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/nd4j/nd4j_main.iml" filepath="$PROJECT_DIR$/.idea/modules/nd4j/nd4j_main.iml" group="nd4j" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/nd4j/nd4j_test.iml" filepath="$PROJECT_DIR$/.idea/modules/nd4j/nd4j_test.iml" group="nd4j" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/rl4j.iml" filepath="$PROJECT_DIR$/.idea/modules/rl4j.iml" group="rl4j" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/rl4j/rl4j_main.iml" filepath="$PROJECT_DIR$/.idea/modules/rl4j/rl4j_main.iml" group="rl4j" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/rl4j/rl4j_test.iml" filepath="$PROJECT_DIR$/.idea/modules/rl4j/rl4j_test.iml" group="rl4j" />
     </modules>
   </component>
 </project>

@@ -1,3 +1,8 @@
 rootProject.name = 'dlModel'
-include 'model'
+include 'datavec'
+include 'dl4j-cuda-specific'
+include 'lstm-hdfs'
+include 'nd4j'
+include 'rl4j'
+include 'dl4j-spark'
 
