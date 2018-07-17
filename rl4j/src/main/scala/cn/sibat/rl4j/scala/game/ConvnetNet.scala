@@ -286,7 +286,7 @@ object ConvnetNet {
     private var out_sy = 1
     private var layer_type = "fc"
     private var bias = opt.getProperty("bias_pref", "0.0").toDouble
-    private var filter = (0 until out_depth).map(i => new Vol(1, 1, num_inputs, 0.0))
+    private var filters = (0 until out_depth).map(i => new Vol(1, 1, num_inputs, 0.0)).toArray
     private var biases = new Vol(1, 1, out_depth, bias)
     private var in_act: Vol = _
     private var out_act: Vol = _
@@ -297,7 +297,7 @@ object ConvnetNet {
       val Vw = v.w
       for (i <- 0 until out_depth) {
         var a = 0.0
-        var wi = filter(i).w
+        var wi = filters(i).w
         for (j <- 0 until num_inputs)
           a += Vw(j) * wi(j)
         a += biases.w(i)
@@ -312,7 +312,7 @@ object ConvnetNet {
       v.dw = ConvnetNet.apply.zeros(v.w.length)
 
       for (i <- 0 until out_depth) {
-        val tfi = this.filter(i)
+        val tfi = this.filters(i)
         val chain_grad = this.out_act.dw(i)
         for (d <- 0 until num_inputs) {
           v.dw(d) += tfi.w(d) * chain_grad
@@ -322,7 +322,676 @@ object ConvnetNet {
       }
     }
 
+    def getParamsAndGrads: Array[String] = {
+      val response = new ArrayBuffer[String]()
+      for (i <- 0 until out_depth) {
+        response += s"{\"params\":${this.filters(i).w.mkString(",")},\"grads\":${this.filters(i).dw.mkString(",")},\"l2_decay_mul\":${this.l2_decay_mul},\"l1_decay_mul\":${this.l1_decay_mul}}"
+      }
+      response += s"{\"params\":${this.biases.w.mkString(",")},\"grads\":${this.biases.dw.mkString(",")},\"l2_decay_mul\":0.0,\"l1_decay_mul\":0.0}"
+      response.toArray
+    }
 
+    def toJSON: JSONObject = {
+      val json = new JSONObject()
+      json.put("out_depth", this.out_depth)
+      json.put("out_sx", this.out_sx)
+      json.put("out_sy", this.out_sy)
+      json.put("layer_type", this.layer_type)
+      json.put("num_inputs", this.num_inputs)
+      json.put("l1_decay_mul", this.l1_decay_mul)
+      json.put("l2_decay_mul", this.l2_decay_mul)
+      json.put("filters", this.filters.map(_.toString))
+      json.put("biases", this.biases.toString)
+      json
+    }
+
+    def fromJSON(jsonObject: JSONObject): FullyConnLayer = {
+      this.out_depth = jsonObject.getInt("out_depth")
+      this.out_sx = jsonObject.getInt("out_sx")
+      this.out_sy = jsonObject.getInt("out_sy")
+      this.layer_type = jsonObject.getString("layer_type")
+      this.num_inputs = jsonObject.getInt("num_inputs")
+      this.l1_decay_mul = if (jsonObject.opt("l1_decay_mul") != null) jsonObject.getDouble("l1_decay_mul") else 1.0
+      this.l2_decay_mul = if (jsonObject.opt("l2_decay_mul") != null) jsonObject.getDouble("l2_decay_mul") else 1.0
+      val jsonArr = jsonObject.getJSONArray("filters")
+      this.filters = new Array[Vol](jsonArr.length())
+      for (i <- 0 until jsonArr.length()) {
+        var v = new Vol(0, 0, 0, 0)
+        v = v.fromJSON(jsonArr.getJSONObject(i))
+        filters(i) = v
+      }
+      this.biases = new Vol(0, 0, 0, 0).fromJSON(jsonObject.getJSONObject("biases"))
+      this
+    }
+
+    override def toString: String = toJSON.toString
+  }
+
+  class PoolLayer(opt: Properties) {
+    private var sx = opt.getProperty("sx").toInt
+    private var sy = opt.getProperty("sy", s"$sx").toInt
+    private var in_depth = opt.getProperty("in_depth").toInt
+    private var in_sx = opt.getProperty("in_sx").toInt
+    private var in_sy = opt.getProperty("in_sy").toInt
+    private var stride = opt.getProperty("stride", "2").toInt
+    private var pad = opt.getProperty("pad", "0").toInt
+    private var out_depth = in_depth
+    private var out_sx = math.floor((in_sx + pad * 2 - sx) / stride + 1).toInt
+    private var out_sy = math.floor((in_sy + pad * 2 - sy) / stride + 1).toInt
+    private var layer_type = "pool"
+    private var swithchx = new Array[Int](out_sx * out_sy * out_depth)
+    private var swithchy = new Array[Int](out_sx * out_sy * out_depth)
+    private var in_act: Vol = _
+    private var out_act: Vol = _
+
+    def forward(v: Vol, is_training: Boolean): Vol = {
+      in_act = v
+      val A = new Vol(out_sx, out_sy, out_depth, 0.0)
+      var n = 0
+      for (d <- 0 until out_depth) {
+        var x = -pad
+        var y = -pad
+        for (ax <- 0 until out_sx) {
+          x += stride
+          y = -pad
+          for (ay <- 0 until out_sy) {
+            y += stride
+            var a = -99999.0
+            var winx = -1
+            var winy = -1
+            for (fx <- 0 until sx; fy <- 0 until sy) {
+              val oy = y + fy
+              val ox = x + fx
+              if (oy >= 0 && oy < v.sy && ox >= 0 && ox < v.sx) {
+                val value = v.get(ox, oy, d)
+                if (value > a) {
+                  a = value
+                  winx = ox
+                  winy = oy
+                }
+              }
+            }
+            swithchx(n) = winx
+            swithchy(n) = winy
+            n += 1
+            A.set(ax, ay, d, a)
+          }
+        }
+      }
+      out_act = A
+      out_act
+    }
+
+    def backward(): Unit = {
+      val V = in_act
+      V.dw = ConvnetNet.apply.zeros(V.w.length)
+      val A = out_act
+
+      var n = 0
+      for (d <- 0 until out_depth) {
+        var x = -pad
+        var y = -pad
+        for (ax <- 0 until out_sx) {
+          x += stride
+          y = -pad
+          for (ay <- 0 until out_sy) {
+            y += stride
+            val chain_grad = out_act.get_grad(ax, ay, d)
+            V.add_grad(swithchx(n), swithchy(n), d, chain_grad)
+            n += 1
+          }
+        }
+      }
+    }
+
+    def toJSON: JSONObject = {
+      val json = new JSONObject()
+      json.put("out_depth", this.out_depth)
+      json.put("out_sx", this.out_sx)
+      json.put("out_sy", this.out_sy)
+      json.put("layer_type", this.layer_type)
+      json.put("sx", this.sx)
+      json.put("sy", this.sy)
+      json.put("stride", this.stride)
+      json.put("in_depth", this.in_depth)
+      json.put("pad", this.pad)
+      json
+    }
+
+    def fromJSON(jsonObject: JSONObject): PoolLayer = {
+      this.out_depth = jsonObject.getInt("out_depth")
+      this.out_sx = jsonObject.getInt("out_sx")
+      this.out_sy = jsonObject.getInt("out_sy")
+      this.layer_type = jsonObject.getString("layer_type")
+      this.sx = jsonObject.getInt("sx")
+      this.sy = jsonObject.getInt("sy")
+      this.stride = jsonObject.getInt("stride")
+      this.in_depth = jsonObject.getInt("in_depth")
+      this.pad = jsonObject.getInt("pad")
+      this.swithchx = new Array[Int](out_sx * out_sy * out_depth)
+      this.swithchy = new Array[Int](out_sx * out_sy * out_depth)
+      this
+    }
+
+    override def toString: String = toJSON.toString
+  }
+
+  class InputLayer(opt: Properties) {
+    private var out_depth = opt.getProperty("out_depth").toInt
+    private var out_sx = opt.getProperty("sx").toInt
+    private var out_sy = opt.getProperty("sy").toInt
+    private var layer_type = "input"
+    private var in_act: Vol = _
+    private var out_act: Vol = _
+
+    def forward(v: Vol, is_training: Boolean): Vol = {
+      in_act = v
+      out_act = v
+      out_act
+    }
+
+    def toJSON: JSONObject = {
+      val json = new JSONObject()
+      json.put("out_depth", this.out_depth)
+      json.put("out_sx", this.out_sx)
+      json.put("out_sy", this.out_sy)
+      json.put("layer_type", this.layer_type)
+      json
+    }
+
+    def fromJSON(jsonObject: JSONObject): InputLayer = {
+      this.out_depth = jsonObject.getInt("out_depth")
+      this.out_sx = jsonObject.getInt("out_sx")
+      this.out_sy = jsonObject.getInt("out_sy")
+      this.layer_type = jsonObject.getString("layer_type")
+      this
+    }
+
+    override def toString: String = toJSON.toString
+  }
+
+  class SoftmaxLayer(opt: Properties) {
+    private var num_inputs = opt.getProperty("in_sx").toInt * opt.getProperty("in_sy").toInt * opt.getProperty("in_depth").toInt
+    private var out_depth = num_inputs
+    private var out_sx = 1
+    private var out_sy = 1
+    private var layer_type = "softmax"
+    private val es = new Array[Double](out_depth)
+    private var in_act: Vol = _
+    private var out_act: Vol = _
+
+    def forward(v: Vol, is_training: Boolean): Vol = {
+      in_act = v
+      val A = new Vol(1, 1, out_depth, 0.0)
+      val as = v.w
+      val amax = v.w.max
+      var esum = 0.0
+      for (i <- 0 until out_depth) {
+        val e = math.exp(as(i) - amax)
+        esum += e
+        es(i) = e
+      }
+
+      for (i <- 0 until out_depth) {
+        es(i) /= esum
+        A.w(i) = es(i)
+      }
+
+      out_act = A
+      out_act
+    }
+
+    def backward(y: Int): Double = {
+      val x = in_act
+      x.dw = new Array[Double](x.w.length)
+      for (i <- 0 until out_depth) {
+        val indicator = if (i == y) 1.0 else 0.0
+        val mul = -(indicator - this.es(i))
+        x.dw(i) = mul
+      }
+      -math.log(es(y))
+    }
+
+    def toJSON: JSONObject = {
+      val json = new JSONObject()
+      json.put("out_depth", this.out_depth)
+      json.put("out_sx", this.out_sx)
+      json.put("out_sy", this.out_sy)
+      json.put("layer_type", this.layer_type)
+      json.put("num_inputs", this.num_inputs)
+      json
+    }
+
+    def fromJSON(jsonObject: JSONObject): SoftmaxLayer = {
+      this.out_depth = jsonObject.getInt("out_depth")
+      this.out_sx = jsonObject.getInt("out_sx")
+      this.out_sy = jsonObject.getInt("out_sy")
+      this.layer_type = jsonObject.getString("layer_type")
+      this.num_inputs = jsonObject.getInt("num_inputs")
+      this
+    }
+
+    override def toString: String = toJSON.toString
+  }
+
+  class RegressionLayer(opt: Properties) {
+    private var num_inputs = opt.getProperty("in_sx").toInt * opt.getProperty("in_sy").toInt * opt.getProperty("in_depth").toInt
+    private var out_depth = num_inputs
+    private var out_sx = 1
+    private var out_sy = 1
+    private var layer_type = "regression"
+    private val es = new Array[Double](out_depth)
+    private var in_act: Vol = _
+    private var out_act: Vol = _
+
+    def forward(v: Vol, is_training: Boolean): Vol = {
+      in_act = v
+      out_act = v
+      out_act
+    }
+
+    def backward(y: Any): Double = {
+      val x = in_act
+      x.dw = new Array[Double](x.w.length)
+      var loss = 0.0
+      y match {
+        case y_arr: Array[Double] =>
+          for (i <- 0 until out_depth) {
+            val dy = x.w(i) - y_arr(i)
+            x.dw(i) = dy
+            loss += 0.5 * dy * dy
+          }
+        case y_d: Double =>
+          val dy = x.w(0) - y_d
+          x.dw(0) = dy
+          loss += 0.5 * dy * dy
+        case _ =>
+      }
+      loss
+    }
+
+    def toJSON: JSONObject = {
+      val json = new JSONObject()
+      json.put("out_depth", this.out_depth)
+      json.put("out_sx", this.out_sx)
+      json.put("out_sy", this.out_sy)
+      json.put("layer_type", this.layer_type)
+      json.put("num_inputs", this.num_inputs)
+      json
+    }
+
+    def fromJSON(jsonObject: JSONObject): RegressionLayer = {
+      this.out_depth = jsonObject.getInt("out_depth")
+      this.out_sx = jsonObject.getInt("out_sx")
+      this.out_sy = jsonObject.getInt("out_sy")
+      this.layer_type = jsonObject.getString("layer_type")
+      this.num_inputs = jsonObject.getInt("num_inputs")
+      this
+    }
+
+    override def toString: String = toJSON.toString
+  }
+
+  class SVMLayer(opt: Properties) {
+    private var num_inputs = opt.getProperty("in_sx").toInt * opt.getProperty("in_sy").toInt * opt.getProperty("in_depth").toInt
+    private var out_depth = num_inputs
+    private var out_sx = 1
+    private var out_sy = 1
+    private var layer_type = "svm"
+    private var in_act: Vol = _
+    private var out_act: Vol = _
+
+    def forward(v: Vol, is_training: Boolean): Vol = {
+      in_act = v
+      out_act = v
+      out_act
+    }
+
+    def backward(y: Int): Double = {
+      val x = in_act
+      x.dw = new Array[Double](x.w.length)
+      val yscore = x.w(y)
+      val margin = 1.0
+      var loss = 0.0
+      for (i <- 0 until out_depth) {
+        if (y != i) {
+          val ydiff = -yscore + x.w(i) + margin
+          if (ydiff > 0) {
+            x.dw(i) += 1
+            x.dw(i) -= 1
+            loss += ydiff
+          }
+        }
+      }
+      loss
+    }
+
+    def toJSON: JSONObject = {
+      val json = new JSONObject()
+      json.put("out_depth", this.out_depth)
+      json.put("out_sx", this.out_sx)
+      json.put("out_sy", this.out_sy)
+      json.put("layer_type", this.layer_type)
+      json.put("num_inputs", this.num_inputs)
+      json
+    }
+
+    def fromJSON(jsonObject: JSONObject): SVMLayer = {
+      this.out_depth = jsonObject.getInt("out_depth")
+      this.out_sx = jsonObject.getInt("out_sx")
+      this.out_sy = jsonObject.getInt("out_sy")
+      this.layer_type = jsonObject.getString("layer_type")
+      this.num_inputs = jsonObject.getInt("num_inputs")
+      this
+    }
+
+    override def toString: String = toJSON.toString
+  }
+
+  class ReluLayer(opt: Properties) {
+    private var out_depth = opt.getProperty("in_depth").toInt
+    private var out_sx = opt.getProperty("in_sx").toInt
+    private var out_sy = opt.getProperty("in_sy").toInt
+    private var layer_type = "relu"
+    private var in_act: Vol = _
+    private var out_act: Vol = _
+
+    def forward(v: Vol, is_training: Boolean): Vol = {
+      in_act = v
+      val V2 = v.clone
+      val v2w = V2.w.map(d => if (d < 0) 0 else d)
+      out_act = V2
+      out_act
+    }
+
+    def backward(y: Int): Unit = {
+      val V = in_act
+      val V2 = out_act
+      val N = V.w.length
+      V.w = new Array[Double](N)
+      for (i <- 0 until N) {
+        if (V2.w(i) <= 0)
+          V.dw(i) = 0
+        else
+          V.dw(i) = V2.dw(i)
+      }
+    }
+
+    def toJSON: JSONObject = {
+      val json = new JSONObject()
+      json.put("out_depth", this.out_depth)
+      json.put("out_sx", this.out_sx)
+      json.put("out_sy", this.out_sy)
+      json.put("layer_type", this.layer_type)
+      json
+    }
+
+    def fromJSON(jsonObject: JSONObject): ReluLayer = {
+      this.out_depth = jsonObject.getInt("out_depth")
+      this.out_sx = jsonObject.getInt("out_sx")
+      this.out_sy = jsonObject.getInt("out_sy")
+      this.layer_type = jsonObject.getString("layer_type")
+      this
+    }
+
+    override def toString: String = toJSON.toString
+  }
+
+  class SigmoidLayer(opt: Properties) {
+    private var out_depth = opt.getProperty("in_depth").toInt
+    private var out_sx = opt.getProperty("in_sx").toInt
+    private var out_sy = opt.getProperty("in_sy").toInt
+    private var layer_type = "sigmoid"
+    private var in_act: Vol = _
+    private var out_act: Vol = _
+
+    def forward(v: Vol, is_training: Boolean): Vol = {
+      in_act = v
+      val V2 = v.cloneAndZero()
+      val N = v.w.length
+      val vw = v.w
+      val v2w = V2.w
+      for (i <- 0 until N) {
+        v2w(i) = 1.0 / (1.0 + math.exp(-vw(i)))
+      }
+      out_act = V2
+      out_act
+    }
+
+    def backward(y: Int): Unit = {
+      val V = in_act
+      val V2 = out_act
+      val N = V.w.length
+      V.w = new Array[Double](N)
+      for (i <- 0 until N) {
+        if (V2.w(i) <= 0)
+          V.dw(i) = 0
+        else
+          V.dw(i) = V2.dw(i)
+      }
+    }
+
+    def toJSON: JSONObject = {
+      val json = new JSONObject()
+      json.put("out_depth", this.out_depth)
+      json.put("out_sx", this.out_sx)
+      json.put("out_sy", this.out_sy)
+      json.put("layer_type", this.layer_type)
+      json
+    }
+
+    def fromJSON(jsonObject: JSONObject): SigmoidLayer = {
+      this.out_depth = jsonObject.getInt("out_depth")
+      this.out_sx = jsonObject.getInt("out_sx")
+      this.out_sy = jsonObject.getInt("out_sy")
+      this.layer_type = jsonObject.getString("layer_type")
+      this
+    }
+
+    override def toString: String = toJSON.toString
+  }
+
+  class MaxoutLayer(opt: Properties) {
+    private var group_size = opt.getProperty("group_size", "2").toInt
+    private var out_depth = opt.getProperty("in_depth").toInt / group_size
+    private var out_sx = opt.getProperty("in_sx").toInt
+    private var out_sy = opt.getProperty("in_sy").toInt
+    private var layer_type = "maxout"
+    private var switches = new Array[Int](out_sx * out_sy * out_depth)
+    private var in_act: Vol = _
+    private var out_act: Vol = _
+
+    def forward(v: Vol, is_training: Boolean): Vol = {
+      in_act = v
+      val N = out_depth
+      val V2 = new Vol(out_sx, out_sy, out_depth, 0.0)
+      if (out_sx == 1 && out_sy == 1) {
+        for (i <- 0 until N) {
+          val ix = i * group_size
+          var a = v.w(ix)
+          var ai = 0
+          for (j <- 1 until group_size) {
+            val a2 = v.w(ix + j)
+            if (a2 > a) {
+              a = a2
+              ai = j
+            }
+          }
+          V2.w(i) = a
+          switches(i) = ix + ai
+        }
+      } else {
+        var n = 0
+        for (x <- 0 until v.sx; y <- 0 until v.sy; i <- 0 until N) {
+          val ix = i * group_size
+          var a = v.get(x, y, ix)
+          var ai = 0
+          for (j <- 1 until group_size) {
+            val a2 = v.get(x, y, ix + j)
+            if (a2 > a) {
+              a = a2
+              ai = j
+            }
+          }
+          V2.set(x, y, i, a)
+          switches(n) = ix + ai
+          n += 1
+        }
+      }
+      out_act = V2
+      out_act
+    }
+
+    def backward(y: Int): Unit = {
+      val V = in_act
+      val V2 = out_act
+      val N = out_depth
+      V.dw = new Array[Double](V.w.length)
+      if (out_sx == 1 && out_sy == 1) {
+        for (i <- 0 until N) {
+          val chain_grad = V2.dw(i)
+          V.dw(switches(i)) = chain_grad
+        }
+      } else {
+        var n = 0
+        for (x <- 0 until V2.sx; y <- 0 until V2.sy; i <- 0 until N) {
+          val chain_grad = V2.get_grad(x, y, i)
+          V.set_grad(x, y, switches(n), chain_grad)
+          n += 1
+        }
+      }
+    }
+
+    def toJSON: JSONObject = {
+      val json = new JSONObject()
+      json.put("out_depth", this.out_depth)
+      json.put("out_sx", this.out_sx)
+      json.put("out_sy", this.out_sy)
+      json.put("layer_type", this.layer_type)
+      json.put("group_size", this.group_size)
+      json
+    }
+
+    def fromJSON(jsonObject: JSONObject): MaxoutLayer = {
+      this.out_depth = jsonObject.getInt("out_depth")
+      this.out_sx = jsonObject.getInt("out_sx")
+      this.out_sy = jsonObject.getInt("out_sy")
+      this.layer_type = jsonObject.getString("layer_type")
+      this.group_size = jsonObject.getInt("group_size")
+      this.switches = new Array[Int](group_size)
+      this
+    }
+
+    override def toString: String = toJSON.toString
+  }
+
+  class TanhLayer(opt: Properties) {
+    private var out_depth = opt.getProperty("in_depth").toInt
+    private var out_sx = opt.getProperty("in_sx").toInt
+    private var out_sy = opt.getProperty("in_sy").toInt
+    private var layer_type = "tanh"
+    private var in_act: Vol = _
+    private var out_act: Vol = _
+
+    def forward(v: Vol, is_training: Boolean): Vol = {
+      in_act = v
+      val V2 = v.cloneAndZero()
+      val N = v.w.length
+      for (i <- 0 until N) {
+        V2.w(i) = math.tanh(v.w(i))
+      }
+      out_act = V2
+      out_act
+    }
+
+    def backward(y: Int): Unit = {
+      val V = in_act
+      val V2 = out_act
+      val N = V.w.length
+      V.dw = new Array[Double](N)
+      for (i <- 0 until N) {
+        val v2wi = V2.w(i)
+        V.dw(i) = (1.0 - v2wi * v2wi) * V2.dw(i)
+      }
+    }
+
+    def toJSON: JSONObject = {
+      val json = new JSONObject()
+      json.put("out_depth", this.out_depth)
+      json.put("out_sx", this.out_sx)
+      json.put("out_sy", this.out_sy)
+      json.put("layer_type", this.layer_type)
+      json
+    }
+
+    def fromJSON(jsonObject: JSONObject): TanhLayer = {
+      this.out_depth = jsonObject.getInt("out_depth")
+      this.out_sx = jsonObject.getInt("out_sx")
+      this.out_sy = jsonObject.getInt("out_sy")
+      this.layer_type = jsonObject.getString("layer_type")
+      this
+    }
+
+    override def toString: String = toJSON.toString
+  }
+
+  class DropoutLayer(opt: Properties) {
+    private var out_depth = opt.getProperty("in_depth").toInt
+    private var out_sx = opt.getProperty("in_sx").toInt
+    private var out_sy = opt.getProperty("in_sy").toInt
+    private var layer_type = "dropout"
+    private var drop_prob = opt.getProperty("drop_prob", "0.5").toDouble
+    private var dropped = new Array[Boolean](out_sx * out_sy * out_depth)
+    private var in_act: Vol = _
+    private var out_act: Vol = _
+
+    def forward(v: Vol, is_training: Boolean = false): Vol = {
+      in_act = v
+      val V2 = v.clone()
+      val N = v.w.length
+      if (is_training) {
+        for (i <- 0 until N) {
+          if (math.random < drop_prob) {
+            V2.w(i) = 0
+            dropped(i) = true
+          } else {
+            dropped(i) = false
+          }
+        }
+      }
+      out_act = V2
+      out_act
+    }
+
+    def backward(y: Int): Unit = {
+      val V = in_act
+      val V2 = out_act
+      val N = V.w.length
+      V.dw = new Array[Double](N)
+      for (i <- 0 until N) {
+        val v2wi = V2.w(i)
+        V.dw(i) = (1.0 - v2wi * v2wi) * V2.dw(i)
+      }
+    }
+
+    def toJSON: JSONObject = {
+      val json = new JSONObject()
+      json.put("out_depth", this.out_depth)
+      json.put("out_sx", this.out_sx)
+      json.put("out_sy", this.out_sy)
+      json.put("layer_type", this.layer_type)
+      json
+    }
+
+    def fromJSON(jsonObject: JSONObject): DropoutLayer = {
+      this.out_depth = jsonObject.getInt("out_depth")
+      this.out_sx = jsonObject.getInt("out_sx")
+      this.out_sy = jsonObject.getInt("out_sy")
+      this.layer_type = jsonObject.getString("layer_type")
+      this
+    }
+
+    override def toString: String = toJSON.toString
   }
 
   class Vol(val sx: Int, val sy: Int, val depth: Int, val c: Double) {
