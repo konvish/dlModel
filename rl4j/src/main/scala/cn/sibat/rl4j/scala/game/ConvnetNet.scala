@@ -1414,8 +1414,8 @@ object ConvnetNet {
     private var unique_labels = ConvnetNet.apply.arrUnique(labels)
     private var iter = 0
     private var foldix = 0
-    private var finish_fold_callback = null
-    private var finish_batch_callback = null
+    private var finish_fold_callback: () => Unit = _
+    private var finish_batch_callback: () => Unit = null
 
     def sampleFolds(): Unit = {
       val n = data.length
@@ -1617,6 +1617,14 @@ object ConvnetNet {
         result += dummy_candidate
       }
       evaluated_candidates = result.toArray
+    }
+
+    def onFinishFold(f: () => Unit): Unit = {
+      finish_fold_callback = f
+    }
+
+    def onFinishBatch(f: () => Unit): Unit = {
+      finish_batch_callback = f
     }
   }
 
