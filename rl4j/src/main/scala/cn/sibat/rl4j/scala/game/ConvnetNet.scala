@@ -2,9 +2,11 @@ package cn.sibat.rl4j.scala.game
 
 import java.util.Properties
 
-import org.json.JSONObject
+import org.json.{JSONArray, JSONObject}
 
+import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
+import scala.util.Random
 
 class ConvnetNet {
   private var return_v = false
@@ -101,9 +103,9 @@ object ConvnetNet {
 
   def apply: ConvnetNet = new ConvnetNet()
 
-  def randf(a: Int, b: Double): Double = math.random * (b - a) + a
+  def randf(a: Double, b: Double): Double = math.random * (b - a) + a
 
-  def randi(a: Int, b: Int): Double = math.floor(math.random * (b - a) + a)
+  def randi(a: Int, b: Int): Int = math.floor(math.random * (b - a) + a).toInt
 
   def augment(v: Vol, crop: Int, dx: Int, dy: Int, fliplr: Boolean): Vol = {
     var W = v
@@ -132,11 +134,11 @@ object ConvnetNet {
   //    p.getPixel()
   //  }
 
-  class ConvLayer(opt: Properties) {
+  class ConvLayer(opt: Properties) extends Layer {
     private var out_depth = opt.getProperty("filters").toInt
     private var sx = opt.getProperty("sx").toInt
     private var in_depth = opt.getProperty("in_depth").toInt
-    private var in_sx = opt.getProperty("in_sx").toInt
+    private val in_sx = opt.getProperty("in_sx").toInt
     private var in_sy = opt.getProperty("in_sy").toInt
     private var sy = opt.getProperty("sy", s"$sx").toInt
     private var stride = opt.getProperty("stride", "1").toInt
@@ -275,9 +277,11 @@ object ConvnetNet {
     }
 
     override def toString: String = toJSON.toString
+
+    override def backward(y: Any): Double = 0.0
   }
 
-  class FullyConnLayer(opt: Properties) {
+  class FullyConnLayer(opt: Properties) extends Layer {
     private var out_depth = opt.getProperty("num_neurons").toInt
     private var l1_decay_mul = opt.getProperty("l1_decay_mul", "0.0").toDouble
     private var l2_decay_mul = opt.getProperty("l2_decay_mul", "1.0").toDouble
@@ -365,9 +369,11 @@ object ConvnetNet {
     }
 
     override def toString: String = toJSON.toString
+
+    override def backward(y: Any): Double = 0.0
   }
 
-  class PoolLayer(opt: Properties) {
+  class PoolLayer(opt: Properties) extends Layer {
     private var sx = opt.getProperty("sx").toInt
     private var sy = opt.getProperty("sy", s"$sx").toInt
     private var in_depth = opt.getProperty("in_depth").toInt
@@ -474,9 +480,13 @@ object ConvnetNet {
     }
 
     override def toString: String = toJSON.toString
+
+    override def backward(y: Any): Double = 0.0
+
+    override def getParamsAndGrads: Array[String] = Array()
   }
 
-  class InputLayer(opt: Properties) {
+  class InputLayer(opt: Properties) extends Layer {
     private var out_depth = opt.getProperty("out_depth").toInt
     private var out_sx = opt.getProperty("sx").toInt
     private var out_sy = opt.getProperty("sy").toInt
@@ -489,6 +499,8 @@ object ConvnetNet {
       out_act = v
       out_act
     }
+
+    override def backward(y: Any): Double = 0.0
 
     def toJSON: JSONObject = {
       val json = new JSONObject()
@@ -508,9 +520,11 @@ object ConvnetNet {
     }
 
     override def toString: String = toJSON.toString
+
+    override def getParamsAndGrads: Array[String] = Array()
   }
 
-  class SoftmaxLayer(opt: Properties) {
+  class SoftmaxLayer(opt: Properties) extends Layer {
     private var num_inputs = opt.getProperty("in_sx").toInt * opt.getProperty("in_sy").toInt * opt.getProperty("in_depth").toInt
     private var out_depth = num_inputs
     private var out_sx = 1
@@ -572,9 +586,13 @@ object ConvnetNet {
     }
 
     override def toString: String = toJSON.toString
+
+    override def backward(y: Any): Unit = 0.0
+
+    override def getParamsAndGrads: Array[String] = Array()
   }
 
-  class RegressionLayer(opt: Properties) {
+  class RegressionLayer(opt: Properties) extends Layer {
     private var num_inputs = opt.getProperty("in_sx").toInt * opt.getProperty("in_sy").toInt * opt.getProperty("in_depth").toInt
     private var out_depth = num_inputs
     private var out_sx = 1
@@ -630,9 +648,11 @@ object ConvnetNet {
     }
 
     override def toString: String = toJSON.toString
+
+    override def getParamsAndGrads: Array[String] = Array()
   }
 
-  class SVMLayer(opt: Properties) {
+  class SVMLayer(opt: Properties) extends Layer {
     private var num_inputs = opt.getProperty("in_sx").toInt * opt.getProperty("in_sy").toInt * opt.getProperty("in_depth").toInt
     private var out_depth = num_inputs
     private var out_sx = 1
@@ -686,9 +706,13 @@ object ConvnetNet {
     }
 
     override def toString: String = toJSON.toString
+
+    override def backward(y: Any): Double = 0.0
+
+    override def getParamsAndGrads: Array[String] = Array()
   }
 
-  class ReluLayer(opt: Properties) {
+  class ReluLayer(opt: Properties) extends Layer {
     private var out_depth = opt.getProperty("in_depth").toInt
     private var out_sx = opt.getProperty("in_sx").toInt
     private var out_sy = opt.getProperty("in_sy").toInt
@@ -735,9 +759,13 @@ object ConvnetNet {
     }
 
     override def toString: String = toJSON.toString
+
+    override def backward(y: Any): Double = 0.0
+
+    override def getParamsAndGrads: Array[String] = Array()
   }
 
-  class SigmoidLayer(opt: Properties) {
+  class SigmoidLayer(opt: Properties) extends Layer {
     private var out_depth = opt.getProperty("in_depth").toInt
     private var out_sx = opt.getProperty("in_sx").toInt
     private var out_sy = opt.getProperty("in_sy").toInt
@@ -789,9 +817,13 @@ object ConvnetNet {
     }
 
     override def toString: String = toJSON.toString
+
+    override def backward(y: Any): Double = 0.0
+
+    override def getParamsAndGrads: Array[String] = Array()
   }
 
-  class MaxoutLayer(opt: Properties) {
+  class MaxoutLayer(opt: Properties) extends Layer {
     private var group_size = opt.getProperty("group_size", "2").toInt
     private var out_depth = opt.getProperty("in_depth").toInt / group_size
     private var out_sx = opt.getProperty("in_sx").toInt
@@ -883,9 +915,13 @@ object ConvnetNet {
     }
 
     override def toString: String = toJSON.toString
+
+    override def backward(y: Any): Double = 0.0
+
+    override def getParamsAndGrads: Array[String] = Array()
   }
 
-  class TanhLayer(opt: Properties) {
+  class TanhLayer(opt: Properties) extends Layer {
     private var out_depth = opt.getProperty("in_depth").toInt
     private var out_sx = opt.getProperty("in_sx").toInt
     private var out_sy = opt.getProperty("in_sy").toInt
@@ -933,9 +969,13 @@ object ConvnetNet {
     }
 
     override def toString: String = toJSON.toString
+
+    override def backward(y: Any): Double = 0.0
+
+    override def getParamsAndGrads: Array[String] = Array()
   }
 
-  class DropoutLayer(opt: Properties) {
+  class DropoutLayer(opt: Properties) extends Layer {
     private var out_depth = opt.getProperty("in_depth").toInt
     private var out_sx = opt.getProperty("in_sx").toInt
     private var out_sy = opt.getProperty("in_sy").toInt
@@ -958,6 +998,8 @@ object ConvnetNet {
             dropped(i) = false
           }
         }
+      } else {
+        for (i <- 0 until N) V2.w(i) *= drop_prob
       }
       out_act = V2
       out_act
@@ -965,12 +1007,13 @@ object ConvnetNet {
 
     def backward(y: Int): Unit = {
       val V = in_act
-      val V2 = out_act
+      val chain_grad = out_act
       val N = V.w.length
       V.dw = new Array[Double](N)
       for (i <- 0 until N) {
-        val v2wi = V2.w(i)
-        V.dw(i) = (1.0 - v2wi * v2wi) * V2.dw(i)
+        if (!dropped(i)) {
+          V.dw(i) = chain_grad.dw(i)
+        }
       }
     }
 
@@ -980,6 +1023,7 @@ object ConvnetNet {
       json.put("out_sx", this.out_sx)
       json.put("out_sy", this.out_sy)
       json.put("layer_type", this.layer_type)
+      json.put("drop_prob", this.drop_prob)
       json
     }
 
@@ -988,10 +1032,592 @@ object ConvnetNet {
       this.out_sx = jsonObject.getInt("out_sx")
       this.out_sy = jsonObject.getInt("out_sy")
       this.layer_type = jsonObject.getString("layer_type")
+      this.drop_prob = jsonObject.getDouble("drop_prob")
       this
     }
 
     override def toString: String = toJSON.toString
+
+    override def backward(y: Any): Double = 0.0
+
+    override def getParamsAndGrads: Array[String] = Array()
+  }
+
+  class LocalResponseNormalizationLayer(opt: Properties) extends Layer {
+    private var k = opt.getProperty("k").toDouble
+    private var n = opt.getProperty("n").toInt
+    private var alpha = opt.getProperty("alpha").toDouble
+    private var beta = opt.getProperty("beta").toDouble
+    private var out_depth = opt.getProperty("in_depth").toInt
+    private var out_sx = opt.getProperty("in_sx").toInt
+    private var out_sy = opt.getProperty("in_sy").toInt
+    private var layer_type = "lrn"
+    private var in_act: Vol = _
+    private var out_act: Vol = _
+    private var S_cache: Vol = _
+
+    def forward(v: Vol, is_training: Boolean = false): Vol = {
+      in_act = v
+      val A = v.cloneAndZero()
+      S_cache = v.cloneAndZero()
+      val n2 = math.floor(n / 2).toInt
+      for (x <- 0 until v.sx; y <- 0 until v.sy; i <- 0 until v.depth) {
+        val ai = v.get(x, y, i)
+        var den = 0.0
+        for (j <- math.max(0, i - n2) to math.min(i + n2, v.depth - 1)) {
+          val aa = v.get(x, y, j)
+          den += aa * aa
+        }
+        den *= alpha / n
+        den += k
+        S_cache.set(x, y, i, den)
+        den = math.pow(den, beta)
+        A.set(x, y, i, ai / den)
+      }
+      out_act = A
+      out_act
+    }
+
+    def backward(): Unit = {
+      val V = in_act
+      val N = V.w.length
+      V.dw = new Array[Double](N)
+      val A = out_act
+      val n2 = math.floor(n / 2).toInt
+      for (x <- 0 until V.sx; y <- 0 until V.sy; i <- 0 until V.depth) {
+        val chain_grad = out_act.get_grad(x, y, i)
+        val S = S_cache.get(x, y, i)
+        val SB = math.pow(S, beta)
+        val SB2 = SB * SB
+
+        for (j <- math.max(0, i - n2) to math.min(i + n2, V.depth - 1)) {
+          val aj = V.get(x, y, j)
+          var g = -aj * beta * math.pow(S, beta - 1) * alpha / n * 2 * aj
+          if (i == j) g += SB
+          g /= SB2
+          g *= chain_grad
+          V.add_grad(x, y, j, g)
+        }
+      }
+    }
+
+    def toJSON: JSONObject = {
+      val json = new JSONObject()
+      json.put("out_depth", this.out_depth)
+      json.put("out_sx", this.out_sx)
+      json.put("out_sy", this.out_sy)
+      json.put("layer_type", this.layer_type)
+      json.put("k", this.k)
+      json.put("n", this.n)
+      json.put("alpha", this.alpha)
+      json.put("beta", this.beta)
+      json
+    }
+
+    def fromJSON(jsonObject: JSONObject): LocalResponseNormalizationLayer = {
+      this.out_depth = jsonObject.getInt("out_depth")
+      this.out_sx = jsonObject.getInt("out_sx")
+      this.out_sy = jsonObject.getInt("out_sy")
+      this.layer_type = jsonObject.getString("layer_type")
+      this.k = jsonObject.getDouble("k")
+      this.n = jsonObject.getInt("n")
+      this.alpha = jsonObject.getDouble("alpha")
+      this.beta = jsonObject.getDouble("beta")
+      this
+    }
+
+    override def toString: String = toJSON.toString
+
+    override def backward(y: Any): Double = 0.0
+
+    override def getParamsAndGrads: Array[String] = Array()
+  }
+
+  abstract class Layer() {
+    var out_sx: Int = _
+    var out_sy: Int = _
+    var out_depth: Int = _
+    var layer_type: String = _
+    var out_act: Vol = _
+
+    def forward(v: Vol, is_training: Boolean): Vol
+
+    def backward(y: Any): Double
+
+    def getParamsAndGrads: JSONArray
+
+    def toJSON: JSONObject
+
+    def fromJSON(jSONObject: JSONObject)
+  }
+
+  class Net() {
+    private var layers: Array[Layer] = _
+
+    def makeLayers(defs: Array[JSONObject]): Unit = {
+      require(defs.length >= 2 && defs.head.getString("layer_type") == "input")
+      val new_defs = desugar(defs)
+      layers = new Array[Layer](new_defs.length)
+      for (i <- new_defs.indices) {
+        val def_i = new_defs(i)
+        if (i > 0) {
+          val prev = layers(i - 1)
+          def_i.put("in_sx", prev.out_sx)
+          def_i.put("in_sy", prev.out_sy)
+          def_i.put("in_depth", prev.out_depth)
+        }
+        def_i.getString("type") match {
+          case "fc" => layers(i) = new FullyConnLayer(new Properties())
+          case "lrn" => layers(i) = new LocalResponseNormalizationLayer(new Properties())
+          case "dropout" => layers(i) = new DropoutLayer(new Properties())
+          case "input" => layers(i) = new InputLayer(new Properties())
+          case "softmax" => layers(i) = new SoftmaxLayer(new Properties())
+          case "regression" => layers(i) = new RegressionLayer(new Properties())
+          case "conv" => layers(i) = new ConvLayer(new Properties())
+          case "pool" => layers(i) = new PoolLayer(new Properties())
+          case "relu" => layers(i) = new ReluLayer(new Properties())
+          case "sigmoid" => layers(i) = new SigmoidLayer(new Properties())
+          case "tanh" => layers(i) = new TanhLayer(new Properties())
+          case "maxout" => layers(i) = new MaxoutLayer(new Properties())
+          case "svm" => layers(i) = new SVMLayer(new Properties())
+          case _ => println("error layer type")
+        }
+      }
+    }
+
+    def forward(v: Vol, is_training: Boolean = false): Vol = {
+      var act = layers(0).forward(v, is_training)
+      for (i <- 1 until layers.length) {
+        act = layers(i).forward(act, is_training)
+      }
+      act
+    }
+
+    def getCostLoss(v: Vol, y: Int): Double = {
+      forward(v)
+      val n = layers.length
+      val loss = layers(n - 1).backward(y)
+      loss
+    }
+
+    def backward(y: Any): Double = {
+      val n = layers.length
+      val loss = layers(n - 1).backward(y)
+      for (i <- n - 2 to 0) {
+        layers(i).backward(y)
+      }
+      loss
+    }
+
+    def getParamsAndGrads: JSONArray = {
+      val response = new JSONArray()
+      for (i <- layers.indices) {
+        val layer_response = layers(i).getParamsAndGrads
+        for (j <- 0 until layer_response.length()) {
+          response.put(layer_response.get(j))
+        }
+      }
+      response
+    }
+
+    def getPrediction: Int = {
+      val S = layers(layers.length - 1)
+      require(S.layer_type.equals("softmax"))
+      val p = S.out_act.w
+      p.indexOf(p.max)
+    }
+
+    def toJSON: JSONObject = {
+      val jsonObject = new JSONObject()
+      val jsonArray = new JSONArray()
+      layers.foreach(l => jsonArray.put(l.toJSON))
+      jsonObject.put("layers", jsonArray)
+      jsonObject
+    }
+
+    def fromJSON(json: JSONObject): Unit = {
+      val json_layers = json.getJSONArray("layers")
+      layers = new Array[Layer](json_layers.length())
+      for (i <- 0 until json_layers.length()) {
+        val layer_json = json_layers.getJSONObject(i)
+        val layer_type = layer_json.getString("layer_type")
+        val layer = layer_type match {
+          case "input" => new InputLayer(new Properties()).fromJSON(layer_json)
+          case "relu" => new ReluLayer(new Properties()).fromJSON(layer_json)
+          case "sigmoid" => new SigmoidLayer(new Properties()).fromJSON(layer_json)
+          case "tanh" => new TanhLayer(new Properties()).fromJSON(layer_json)
+          case "dropout" => new DropoutLayer(new Properties()).fromJSON(layer_json)
+          case "conv" => new ConvLayer(new Properties()).fromJSON(layer_json)
+          case "pool" => new PoolLayer(new Properties()).fromJSON(layer_json)
+          case "lrn" => new LocalResponseNormalizationLayer(new Properties()).fromJSON(layer_json)
+          case "softmax" => new SoftmaxLayer(new Properties()).fromJSON(layer_json)
+          case "regression" => new RegressionLayer(new Properties()).fromJSON(layer_json)
+          case "fc" => new FullyConnLayer(new Properties()).fromJSON(layer_json)
+          case "maxout" => new MaxoutLayer(new Properties()).fromJSON(layer_json)
+          case "svm" => new SVMLayer(new Properties()).fromJSON(layer_json)
+        }
+        layers(i) = layer
+      }
+    }
+
+    private def desugar(defs: Array[JSONObject]): Array[JSONObject] = {
+      val new_defs = new ArrayBuffer[JSONObject]()
+      for (i <- defs.indices) {
+        val def_i = defs(i)
+        val layer = def_i.getString("layer_type")
+        if (layer.equals("softmax") || layer.equals("svm"))
+          new_defs += new JSONObject().put("type", "fc").put("num_neurons", def_i.getInt("num_classes"))
+        if (layer.equals("regression"))
+          new_defs += new JSONObject().put("type", "fc").put("num_neurons", def_i.getInt("num_neurons"))
+        if ((layer.equals("fc") || layer.equals("conv")) && def_i.isNull("bias_pref")) {
+          def_i.put("bias_pref", 0.0)
+          if (!def_i.isNull("activation") && def_i.getString("activation").equals("relu"))
+            def_i.put("bias_pref", 1.0)
+        }
+        new_defs += def_i
+
+        if (!def_i.isNull("activation")) {
+          def_i.getString("activation") match {
+            case "relu" => new_defs += new JSONObject().put("type", "relu")
+            case "sigmoid" => new_defs += new JSONObject().put("type", "sigmoid")
+            case "tanh" => new_defs += new JSONObject().put("type", "tanh")
+            case "maxout" =>
+              val gs = if (def_i.isNull("group_size")) 2 else def_i.getInt("group_size")
+              new_defs += new JSONObject().put("type", "maxout").put("group_size", gs)
+            case _ => println("ERROR unsupported activation")
+          }
+        }
+        if (!def_i.isNull("drop_prob") && !def_i.getString("type").equals("dropout"))
+          new_defs += new JSONObject().put("type", "dropout").put("drop_prob", def_i.getDouble("drop_prob"))
+      }
+      new_defs.toArray
+    }
+  }
+
+  class Trainer(net: Net, options: JSONObject) {
+    private var learning_rate = if (options.isNull("learning_rate")) 0.01 else options.getDouble("learning_rate")
+    private var l1_decay = if (options.isNull("l1_decay")) 0.0 else options.getDouble("l1_decay")
+    private var l2_decay = if (options.isNull("l2_decay")) 0.0 else options.getDouble("l2_decay")
+    private var batch_size = if (options.isNull("batch_size")) 1 else options.getInt("batch_size")
+    private var method = if (options.isNull("method")) "sgd" else options.getString("method")
+
+    private var momentum = if (options.isNull("momentum")) 0.9 else options.getDouble("momentum")
+    private var ro = if (options.isNull("ro")) 0.95 else options.getDouble("ro")
+    private var eps = if (options.isNull("eps")) 1e-6 else options.getDouble("eps")
+
+    private var k = 0
+    private var gsum: Array[Array[Double]] = _
+    private var xsum: Array[Array[Double]] = _
+
+    def train(x: Vol, y: Any): JSONObject = {
+      var start = System.currentTimeMillis()
+      net.forward(x, is_training = true)
+      var end = System.currentTimeMillis()
+      val fwd_time = end - start
+
+      start = System.currentTimeMillis()
+      val cost_loss = net.backward(y)
+      var l1_decay_loss = 0.0
+      var l2_decay_loss = 0.0
+      end = System.currentTimeMillis()
+      val bwd_time = end - start
+
+      k += 1
+      if (k % batch_size == 0) {
+        val pglist = net.getParamsAndGrads
+        if (gsum.length == 0 && (!method.equals("sgd") || momentum > 0.0)) {
+          gsum = new Array[Array[Double]](pglist.length())
+          xsum = new Array[Array[Double]](pglist.length())
+          for (i <- 0 until pglist.length()) {
+            val len = pglist.getJSONObject(i).getJSONArray("params").length()
+            gsum(i) = new Array[Double](len)
+            if (method.equals("adadelta"))
+              xsum(i) = new Array[Double](len)
+            else
+              xsum(i) = Array[Double]()
+          }
+        }
+        for (i <- 0 until pglist.length()) {
+          val pg = pglist.getJSONObject(i)
+          val p = pg.getJSONArray("params")
+          val g = pg.getJSONArray("grads")
+
+          val l2_decay_mul = if (pg.isNull("l2_decay_mul")) 1.0 else pg.getDouble("l2_decay_mul")
+          val l1_decay_mul = if (pg.isNull("l1_decay_mul")) 1.0 else pg.getDouble("l1_decay_mul")
+          val l2_decay_ = this.l2_decay * l2_decay_mul
+          val l1_decay_ = this.l1_decay * l1_decay_mul
+          val plen = p.length
+          for (j <- 0 until plen) {
+            l2_decay_loss += l2_decay_ * p.getDouble(j) * p.getDouble(j) / 2
+            l1_decay_loss += l1_decay_ * math.abs(p.getDouble(j))
+            val l1grad = l1_decay_ * (if (p.getDouble(j) > 0) 1 else -1)
+            val l2grad = l2_decay_ * p.getDouble(j)
+
+            val gij = (l2grad + l1grad + g.getDouble(j)) / batch_size
+            method match {
+              case "adagras" =>
+                gsum(i)(j) = gsum(i)(j) + gij * gij
+                val dx = -learning_rate / math.sqrt(gsum(i)(j) + eps) * gij
+                p.put(j, p.getDouble(j) + dx)
+              case "windowgrad" =>
+                gsum(i)(j) = ro * gsum(i)(j) + (1 - ro) * gij * gij
+                val dx = -learning_rate / math.sqrt(gsum(i)(j) + eps) * gij
+                p.put(j, p.getDouble(j) + dx)
+              case "adadelta" =>
+                gsum(i)(j) = ro * gsum(i)(j) + (1 - ro) * gij * gij
+                val dx = -math.sqrt((xsum(i)(j) + eps) / (gsum(i)(j) + eps)) * gij
+                xsum(i)(j) = ro * xsum(i)(j) + (1 - ro) * dx * dx
+                p.put(j, p.getDouble(j) + dx)
+              case "nesterov" =>
+                val dx = gsum(i)(j)
+                gsum(i)(j) = gsum(i)(j) * momentum + learning_rate * gij
+                p.put(j, p.getDouble(j) + dx)
+              case _ =>
+                if (momentum > 0.0) {
+                  val dx = momentum * gsum(i)(j) - learning_rate * gij
+                  gsum(i)(j) = dx
+                  p.put(j, p.getDouble(j) + dx)
+                }.asScala else
+                  p.put(j, p.getDouble(j) - learning_rate * gij)
+            }
+            g.put(j, 0.0)
+          }
+        }
+      }
+      new JSONObject().put("fwd_time", fwd_time).put("bwd_time", bwd_time)
+        .put("l2_decay_loss", l2_decay_loss).put("l1_decay_loss", l1_decay_loss)
+        .put("cost_loss", cost_loss).put("softmax_loss", cost_loss)
+        .put("loss", cost_loss + l1_decay_loss + l2_decay_loss)
+    }
+  }
+
+  class MagicNet(data: Array[Vol], labels: Array[Double], opt: Properties) {
+    private var train_ratio = opt.getProperty("train_ratio", "0.7").toDouble
+    private var num_folds = opt.getProperty("num_folds", "10").toInt
+    private var num_candidates = opt.getProperty("num_candidates", "50").toInt
+    private var num_epochs = opt.getProperty("num_epochs", "50").toInt
+    private var ensemble_size = opt.getProperty("ensemble_size", "10").toInt
+    private var batch_size_min = opt.getProperty("batch_size_min", "10").toInt
+    private var batch_size_max = opt.getProperty("batch_size_max", "300").toInt
+    private var l2_decay_min = opt.getProperty("l2_decay_min", "-4").toInt
+    private var l2_decay_max = opt.getProperty("l2_decay_max", "2").toInt
+    private var learning_rate_min = opt.getProperty("learning_rate_min", "-4").toInt
+    private var learning_rate_max = opt.getProperty("learning_rate_max", "0").toInt
+    private var momentum_min = opt.getProperty("momentum_min", "0.9").toDouble
+    private var momentum_max = opt.getProperty("momentum_max", "0.9").toDouble
+    private var neurons_min = opt.getProperty("neurons_min", "5").toInt
+    private var neurons_max = opt.getProperty("neurons_max", "30").toInt
+
+    private var folds: JSONArray = _
+    private var candidates: Array[JSONObject] = _
+    private var evaluated_candidates: Array[JSONObject] = Array()
+    private var unique_labels = ConvnetNet.apply.arrUnique(labels)
+    private var iter = 0
+    private var foldix = 0
+    private var finish_fold_callback = null
+    private var finish_batch_callback = null
+
+    def sampleFolds(): Unit = {
+      val n = data.length
+      val num_train = math.floor(train_ratio * n).toInt
+      for (i <- 0 until num_folds) {
+        val p = ConvnetNet.apply.randperm(n)
+        folds.put(new JSONObject().put("train_ix", p.slice(0, num_train)).put("test_ix", p.slice(num_train, n)))
+      }
+    }
+
+    def sampleCandidate(): JSONObject = {
+      val input_depth = data(0).w.length
+      val num_classes = unique_labels.length
+      val layer_defs = new ArrayBuffer[JSONObject]()
+      layer_defs += new JSONObject().put("type", "input").put("out_sx", 1).put("out_sy", 1).put("out_depth", input_depth)
+      val nl = ConvnetNet.apply.weightedSample(Array(0, 1, 2, 3), Array(0.2, 0.3, 0.3, 0.2))
+      for (q <- nl) {
+        val ni = randi(neurons_min, neurons_max)
+        val ran = new Random().nextInt(3)
+        val m = Array("tanh", "maxout", "relu")
+        val act = m(ran)
+        if (randf(0, 1) < 0.5) {
+          val dp = math.random
+          layer_defs += new JSONObject().put("type", "fc").put("num_neurons", ni).put("activation", act).put("drop_prob", dp)
+        } else {
+          layer_defs += new JSONObject().put("type", "fc").put("num_neurons", ni).put("activation", act)
+        }
+      }
+      layer_defs += new JSONObject().put("type", "softmax").put("num_classes", num_classes)
+      val net = new Net()
+      net.makeLayers(layer_defs.toArray)
+
+      val bs = randi(batch_size_min, batch_size_max)
+      val l2 = math.pow(10, randf(l2_decay_min, l2_decay_max))
+      val lr = math.pow(10, randi(learning_rate_min, learning_rate_max))
+      val mom = randf(momentum_min, momentum_max)
+      val tp = randf(0, 1)
+      val trainer_def = if (tp < 0.33) {
+        new JSONObject().put("method", "adadelta").put("batch_size", bs).put("l2_decay", l2)
+      } else if (tp < 0.66) {
+        new JSONObject().put("method", "adagrad").put("learning_rate", lr).put("batch_size", bs).put("l2_decay", l2)
+      } else {
+        new JSONObject().put("method", "sgd").put("learning_rate", lr).put("momentum", mom).put("batch_size", bs).put("l2_decay", l2)
+      }
+
+      val trainer = new Trainer(net, trainer_def)
+
+      val cand = new JSONObject()
+      cand.put("acc", Array())
+      cand.put("accv", 0)
+      cand.put("layer_defs", layer_defs.toArray)
+      cand.put("trainer_def", trainer_def)
+      cand.put("net", net)
+      cand.put("trainer", trainer)
+      cand
+    }
+
+    def sampleCandidates(): Unit = {
+      val result = new ArrayBuffer[JSONObject]()
+      for (i <- 0 until num_candidates) {
+        val cand = sampleCandidate()
+        result += cand
+      }
+      candidates = result.toArray
+    }
+
+    def evalValErrors(): Array[Double] = {
+      val vals = new ArrayBuffer[Double]()
+      val fold = folds.getJSONObject(foldix)
+      for (k <- candidates.indices) {
+        val net = candidates(k).get("net").asInstanceOf[Net]
+        var v = 0.0
+        val test_ix = fold.getJSONArray("test_ix")
+        for (q <- 0 until test_ix.length()) {
+          val x = data(test_ix.get(q).asInstanceOf[Vol])
+          val l = labels(test_ix.getInt(q))
+          net.forward(x)
+          val yhat = net.getPrediction
+          val loss = if (yhat == l) 1.0 else 0.0
+          v += loss
+        }
+        v /= test_ix.length()
+        vals += v
+      }
+      vals.toArray
+    }
+
+    def step(): Unit = {
+      iter += 1
+
+      val fold = folds.getJSONObject(foldix)
+      val train_ix = fold.getJSONArray("train_ix")
+      val dataix = train_ix.getInt(randi(0, train_ix.length()))
+      for (k <- candidates.indices) {
+        val x = data(dataix)
+        val l = labels(dataix)
+        candidates(k).get("trainer").asInstanceOf[Trainer].train(x, l)
+      }
+
+      val lastiter = num_epochs * fold.getJSONArray("train_ix").length()
+      if (iter >= lastiter) {
+        val val_acc = evalValErrors()
+        for (k <- candidates.indices) {
+          val c = candidates(k)
+          c.put("acc", c.getJSONArray("acc").put(val_acc(k)))
+          c.put("accv", c.getDouble("accv") + val_acc(k))
+        }
+        iter = 0
+        foldix += 1
+        if (foldix >= folds.length()) {
+          for (k <- candidates.indices) {
+            evaluated_candidates ++= Array(candidates(k))
+          }
+          evaluated_candidates.sortBy(obj => obj.getDouble("accv") / obj.getJSONArray("acc").length())
+
+          if (evaluated_candidates.length > 3 * ensemble_size) {
+            evaluated_candidates = evaluated_candidates.slice(0, 3 * ensemble_size)
+          }
+          if (finish_batch_callback != null) {
+            finish_batch_callback()
+          }
+          sampleCandidates()
+          foldix = 0
+        } else {
+          for (k <- candidates.indices) {
+            val c = candidates(k)
+            val net = new Net()
+            val layers_defs = new ArrayBuffer[JSONObject]()
+            val layer = c.getJSONArray("layer_defs")
+            for (i <- 0 until layer.length()) {
+              layers_defs += layer.getJSONObject(i)
+            }
+            net.makeLayers(layers_defs.toArray)
+            val trainer = new Trainer(net, c.getJSONObject("trainer_def"))
+            c.put("net", net)
+            c.put("trainer", trainer)
+          }
+        }
+      }
+    }
+
+    def predict_soft(data: Vol): Vol = {
+      var eval_candidates = Array[JSONObject]()
+      var nv = 0
+      if (evaluated_candidates.length == 0) {
+        nv = candidates.length
+        eval_candidates = this.candidates
+      } else {
+        nv = math.min(ensemble_size, evaluated_candidates.length)
+        eval_candidates = evaluated_candidates
+      }
+      var xout: Vol = null
+      var n = 0
+      for (j <- 0 until nv) {
+        val net = eval_candidates(j).get("net").asInstanceOf[Net]
+        val x = net.forward(data)
+        if (j == 0) {
+          xout = x
+          n = x.w.length
+        } else {
+          for (d <- 0 until n)
+            xout.w(d) += x.w(d)
+        }
+      }
+      for (d <- 0 until n)
+        xout.w(d) /= nv
+      xout
+    }
+
+    def predict(data: Vol): Int = {
+      val xout = predict_soft(data)
+      var predicted_label = -1
+      if (xout.w.length != 0) {
+        val stats = ConvnetNet.apply.maxmin(xout.w)
+        predicted_label = stats.getOrElse("maxi", 0).toInt
+      }
+      predicted_label
+    }
+
+    def toJSON: JSONObject = {
+      val nv = math.min(ensemble_size, evaluated_candidates.length)
+      val json = new JSONObject()
+      val jsonNets = new JSONArray()
+      for (i <- 0 until nv) {
+        jsonNets.put(evaluated_candidates(i).get("net").asInstanceOf[Net].toJSON)
+      }
+      json.put("nets", jsonNets)
+    }
+
+    def fromJSON(json: JSONObject): Unit = {
+      val nets = json.getJSONArray("nets")
+      ensemble_size = nets.length()
+      val result = new ArrayBuffer[JSONObject]()
+      for (i <- 0 until ensemble_size) {
+        val net = new Net()
+        net.fromJSON(nets.getJSONObject(i))
+        val dummy_candidate = new JSONObject()
+        dummy_candidate.put("net", net)
+        result += dummy_candidate
+      }
+      evaluated_candidates = result.toArray
+    }
   }
 
   class Vol(val sx: Int, val sy: Int, val depth: Int, val c: Double) {
