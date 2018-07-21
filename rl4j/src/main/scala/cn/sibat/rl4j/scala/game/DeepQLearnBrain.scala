@@ -1,69 +1,89 @@
 package cn.sibat.rl4j.scala.game
 
-import java.util.Properties
+import org.json.JSONObject
+
+import scala.collection.mutable.ArrayBuffer
+
+class Experience() {
+  private
+  def this(state0: Any, action0: Any, reward0: Any, state1: Any) = {
+
+  }
+}
 
 class DeepQLearnBrain(num_states: Int,
                       num_actions: Int,
-                      opt: Properties
+                      opt: JSONObject
                      ) {
-  private val temporal_window = opt.getProperty("temporal_window", "1").toInt
-  private val experience_size = opt.getProperty("experience_size", "30000").toInt
-  private val gamma = opt.getProperty("gamma", "0.8").toDouble
-  private val learning_steps_total = opt.getProperty("learning_steps_total", "100000").toInt
-  private val learning_steps_burnin = opt.getProperty("learning_steps_burnin", "3000").toInt
-  private val epsilon_min = opt.getProperty("epsilon_min", "0.05").toDouble
-  private val epsilon_test_time = opt.getProperty("epsilon_test_time", "0.01").toDouble
-  private val random_action_distribution = opt.getProperty("random_action_distribution", "").split(",").map(_.toDouble)
+  private val temporal_window = if (opt.isNull("temporal_window")) 1 else opt.getInt("temporal_window")
+  private val experience_size = if (opt.isNull("experience_size")) 30000 else opt.getInt("experience_size")
+  private val gamma = if (opt.isNull("gamma")) 0.8 else opt.getDouble("gamma")
+  private val learning_steps_total = if (opt.isNull("learning_steps_total")) 100000 else opt.getInt("learning_steps_total")
+  private val learning_steps_burnin = if (opt.isNull("learning_steps_burnin")) 3000 else opt.getInt("learning_steps_burnin")
+  private val epsilon_min = if (opt.isNull("epsilon_min")) 0.05 else opt.getDouble("epsilon_min")
+  private val epsilon_test_time = if (opt.isNull("epsilon_test_time")) 0.01 else opt.getDouble("epsilon_test_time")
+  private val random_action_distribution = if (opt.isNull("random_action_distribution")) Array() else opt.getString("random_action_distribution").split(",").map(_.toDouble)
   private val net_inputs = num_states * this.temporal_window + num_actions * this.temporal_window + num_states
   private val window_size = math.max(temporal_window, 2)
   private val state_window = new Array[Int](window_size)
   private val action_window = new Array[Int](window_size)
   private val reward_dindow = new Array[Int](window_size)
   private val net_window = new Array[Int](window_size)
-  private val layer_defs = if (opt.containsKey("layer_defs")) {
-    1
+  private val layer_defs = if (opt.isNull("layers_defs")) {
+    val result = new ArrayBuffer[JSONObject]()
+    result += new JSONObject().put("type", "input").put("out_sx", 1).put("out_sy", 1).put("out_depth", net_inputs)
+    if (!opt.isNull("hidden_layer_sizes")) {
+      val h1 = opt.getJSONArray("hidden_layer_sizes")
+      for (k <- 0 until h1.length()) {
+        result += new JSONObject().put("type", "fc").put("num_neurons", h1.getInt(k)).put("activation", "relu")
+      }
+    }
+    result += new JSONObject().put("type", "regression").put("num_neurons", num_actions)
+    result.toArray
   } else {
-    0
+    val result = new ArrayBuffer[JSONObject]()
+    val layers = opt.getJSONArray("layer_defs")
+    for (k <- 0 until layers.length()) {
+      result += layers.getJSONObject(k)
+    }
+    result.toArray
   }
 
-  private val value_net = new ConvnetNet()
+  private val value_net = new ConvnetNet.Net()
   value_net.makeLayers(layer_defs)
-  private val tdtrainer_options = if (opt.containsKey("tdtrainer_options")) {
-    opt.getProperty("tdtrainer_options").toMap
-  } else Map(
-    "learning_rate" -> 0.01
-    , "momentum" -> 0.0
-    , "batch_size" -> 64
-    , "l2_decay" -> 0.01
-  )
+  private val tdtrainer_options = if (opt.isNull("tdtrainer_options"))
+    new JSONObject().put("learning_rate", 0.01).put("momentum", 0.0).put("batch_size", 64).put("l2_decay", 0.01)
+  else opt.getJSONObject("tdtrainer_options")
 
-  val tdtrainer = new ConvnetNet().SGDTrainer(value_net, tdtrainer_options)
+  val tdtrainer = new ConvnetNet.Trainer(value_net, tdtrainer_options)
   val experience = Array()
-  val age = 0
+  var age = 0
   var forward_passes = 0
   var epsilon = 1.0
-  val latest_reward = 0
+  var latest_reward = 0
   var last_input_array = Array[Double]()
   val average_reward_window = (1000, 10)
   val average_loss_window = (1000, 10)
   val learning = true
 
-  def random_action(): Unit = {
+  def random_action(): Int = {
+    var result = 0
     if (random_action_distribution.length == 0) {
-      ConvnetNet.randi(0, num_actions)
+      result = ConvnetNet.randi(0, num_actions)
     } else {
       val p = ConvnetNet.randf(0, 1.0)
       var cumprob = 0.0
       for (k <- 0 until num_actions) {
         cumprob += random_action_distribution(k)
         if (p < cumprob)
-          k
+          result = k
       }
     }
+    result
   }
 
-  def policy(s: Array[Double]): Map[String, Int] = {
-    val svol = new ConvnetNet.Vol(1, 1, net_inputs)
+  def policy(s: Array[Double]): JSONObject = {
+    val svol = new ConvnetNet.Vol(1, 1, net_inputs, 0.0)
     svol.w = s
     val action_values = value_net.forward(svol)
     var maxk = 0
@@ -74,7 +94,7 @@ class DeepQLearnBrain(num_states: Int,
         maxval = action_values.w(k)
       }
     }
-    Map("action" -> maxk, "value" -> maxval)
+    new JSONObject().put("action", maxk).put("value", maxval)
   }
 
   def getNetInput(xt: Array[Double]): Array[Double] = {
@@ -83,33 +103,57 @@ class DeepQLearnBrain(num_states: Int,
     val n = window_size
     for (k <- 0 until temporal_window) {
       w = w ++ Array(state_window(n - 1 - k))
-      val actionlofk = new Array[Double](num_actions)
-      actionlofk(action_window(n-1-k)) = 1.0 * num_states
-      w = w ++ actionlofk
+      val action1ofk = new Array[Double](num_actions)
+      action1ofk(action_window(n - 1 - k)) = 1.0 * num_states
+      w = w ++ action1ofk
     }
     w
   }
 
-  def forward(input_array:Array[Double]): Unit ={
+  def forward(input_array: Array[Double]): Int = {
     forward_passes += 1
     last_input_array = input_array
-    var action = _
-    if (forward_passes > temporal_window){
-      val net_input = getNetInput(input_array)
-      if (learning){
-        epsilon = math.min(1.0,math.max(epsilon_min,1.0-(age - learning_steps_burnin)/(learning_steps_total - learning_steps_burnin)))
-      }else{
+    var action = 0
+    var net_input = Array[Double]()
+    if (forward_passes > temporal_window) {
+      net_input = getNetInput(input_array)
+      if (learning) {
+        epsilon = math.min(1.0, math.max(epsilon_min, 1.0 - (age - learning_steps_burnin) / (learning_steps_total - learning_steps_burnin)))
+      } else {
         epsilon = epsilon_test_time
       }
-      val rf = ConvnetNet.randf(0,1)
-      if (rf < epsilon){
+      val rf = ConvnetNet.randf(0, 1)
+      if (rf < epsilon) {
         action = random_action()
-      }else{
+      } else {
         val maxact = policy(net_input)
-        action = maxact.get("action")
+        action = maxact.getInt("action")
       }
-    }else{
+    } else {
+      net_input = Array[Double]()
+      action = random_action()
+    }
+    net_window.shift()
+    net_window.push(net_input)
+    state_window.shift()
+    state_window.push(input_array)
+    action_window.shift()
+    action_window.push(action)
+    action
+  }
 
+  def backward(reward: Int): Unit = {
+    latest_reward = reward
+    average_reward_window.add(reward)
+    reward_dindow.shift()
+    reward_dindow.push()
+
+    if (learning) {
+      age += 1
+      if (forward_passes > temporal_window + 1) {
+        val e = new Experience()
+
+      }
     }
   }
 }

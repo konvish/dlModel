@@ -8,7 +8,7 @@ import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
 import scala.util.Random
 
-class ConvnetNet {
+object ConvnetNet {
   private var return_v = false
   private var v_val = 0.0
 
@@ -88,20 +88,6 @@ class ConvnetNet {
     }
     0.0
   }
-
-  def forward(svol: ConvnetNet.Vol): Array[Int] = {
-    Array()
-  }
-
-  def SGDTrainer(value_net: ConvnetNet, tdtrainer_options: Map[_ <: String, Double]) = {}
-
-  def makeLayers(layer_defs: Int) = {}
-
-}
-
-object ConvnetNet {
-
-  def apply: ConvnetNet = new ConvnetNet()
 
   def randf(a: Double, b: Double): Double = math.random * (b - a) + a
 
@@ -191,7 +177,7 @@ object ConvnetNet {
 
     def backward(): Unit = {
       val v = this.in_act
-      v.dw = ConvnetNet.apply.zeros(v.w.length)
+      v.dw = zeros(v.w.length)
       val v_sx = v.sx | 0
       val v_sy = v.sy | 0
       val xy_stride = this.stride | 0
@@ -313,7 +299,7 @@ object ConvnetNet {
 
     def backward(): Unit = {
       val v = this.in_act
-      v.dw = ConvnetNet.apply.zeros(v.w.length)
+      v.dw = zeros(v.w.length)
 
       for (i <- 0 until out_depth) {
         val tfi = this.filters(i)
@@ -430,7 +416,7 @@ object ConvnetNet {
 
     def backward(): Unit = {
       val V = in_act
-      V.dw = ConvnetNet.apply.zeros(V.w.length)
+      V.dw = zeros(V.w.length)
       val A = out_act
 
       var n = 0
@@ -1411,7 +1397,7 @@ object ConvnetNet {
     private var folds: JSONArray = _
     private var candidates: Array[JSONObject] = _
     private var evaluated_candidates: Array[JSONObject] = Array()
-    private var unique_labels = ConvnetNet.apply.arrUnique(labels)
+    private var unique_labels = arrUnique(labels)
     private var iter = 0
     private var foldix = 0
     private var finish_fold_callback: () => Unit = _
@@ -1421,7 +1407,7 @@ object ConvnetNet {
       val n = data.length
       val num_train = math.floor(train_ratio * n).toInt
       for (i <- 0 until num_folds) {
-        val p = ConvnetNet.apply.randperm(n)
+        val p = randperm(n)
         folds.put(new JSONObject().put("train_ix", p.slice(0, num_train)).put("test_ix", p.slice(num_train, n)))
       }
     }
@@ -1431,7 +1417,7 @@ object ConvnetNet {
       val num_classes = unique_labels.length
       val layer_defs = new ArrayBuffer[JSONObject]()
       layer_defs += new JSONObject().put("type", "input").put("out_sx", 1).put("out_sy", 1).put("out_depth", input_depth)
-      val nl = ConvnetNet.apply.weightedSample(Array(0, 1, 2, 3), Array(0.2, 0.3, 0.3, 0.2))
+      val nl = weightedSample(Array(0, 1, 2, 3), Array(0.2, 0.3, 0.3, 0.2))
       for (q <- nl) {
         val ni = randi(neurons_min, neurons_max)
         val ran = new Random().nextInt(3)
@@ -1589,7 +1575,7 @@ object ConvnetNet {
       val xout = predict_soft(data)
       var predicted_label = -1
       if (xout.w.length != 0) {
-        val stats = ConvnetNet.apply.maxmin(xout.w)
+        val stats = maxmin(xout.w)
         predicted_label = stats.getOrElse("maxi", 0).toInt
       }
       predicted_label
@@ -1631,17 +1617,17 @@ object ConvnetNet {
   class Vol(val sx: Int, val sy: Int, val depth: Int, val c: Double) {
     var n: Int = sx * sy * depth
     var w: Array[Double] = {
-      val result = ConvnetNet.apply.zeros(n)
+      val result = zeros(n)
       if (c.isNaN) {
         val scale = math.sqrt(1.0 / n)
-        val value = ConvnetNet.apply.randn(0.0, scale)
-        result.map(d => value)
+        val value = randn(0.0, scale)
+        result.map((d: Double) => value)
       } else {
         result.map(d => c)
       }
       result
     }
-    var dw: Array[Double] = ConvnetNet.apply.zeros(n)
+    var dw: Array[Double] = zeros(n)
 
     def get(x: Int, y: Int, d: Int): Double = {
       val ix = (sx * y + x) * depth + d
