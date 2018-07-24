@@ -1284,7 +1284,7 @@ object ConvnetNet {
     private var learning_rate = if (options.isNull("learning_rate")) 0.01 else options.getDouble("learning_rate")
     private var l1_decay = if (options.isNull("l1_decay")) 0.0 else options.getDouble("l1_decay")
     private var l2_decay = if (options.isNull("l2_decay")) 0.0 else options.getDouble("l2_decay")
-    private var batch_size = if (options.isNull("batch_size")) 1 else options.getInt("batch_size")
+    var batch_size: Int = if (options.isNull("batch_size")) 1 else options.getInt("batch_size")
     private var method = if (options.isNull("method")) "sgd" else options.getString("method")
 
     private var momentum = if (options.isNull("momentum")) 0.9 else options.getDouble("momentum")
@@ -1627,6 +1627,9 @@ object ConvnetNet {
       }
       result
     }
+
+    def this(sx: Int, sy: Int, depth: Int) = this(sx, sy, depth, 0.0)
+
     var dw: Array[Double] = zeros(n)
 
     def get(x: Int, y: Int, d: Int): Double = {
