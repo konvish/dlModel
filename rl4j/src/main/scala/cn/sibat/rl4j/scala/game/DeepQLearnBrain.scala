@@ -4,6 +4,10 @@ import org.json.JSONObject
 
 import scala.collection.mutable.ArrayBuffer
 
+/**
+  * 一个agent在state0执行了action0
+  * 环境评估反馈reward0，更新环境为新的转态state1
+  */
 class Experience() {
   var state0: Array[Double] = _
   var action0: Int = _
@@ -18,10 +22,18 @@ class Experience() {
   }
 }
 
+/**
+  * 接收新的input和reward，让outputs 最大化reward
+  *
+  * @param num_states  states
+  * @param num_actions action
+  * @param opt         配置
+  */
 class DeepQLearnBrain(num_states: Int,
                       num_actions: Int,
                       opt: JSONObject
                      ) {
+  //记录的偏移窗口
   private val temporal_window = if (opt.isNull("temporal_window")) 1 else opt.getInt("temporal_window")
   private val experience_size = if (opt.isNull("experience_size")) 30000 else opt.getInt("experience_size")
   private val start_learn_threshold = if (opt.isNull("start_learn_threshold")) math.floor(math.min(this.experience_size * 0.1, 1000)).toInt else opt.getInt("experience_size")
