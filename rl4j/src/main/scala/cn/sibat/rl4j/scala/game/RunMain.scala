@@ -5,49 +5,83 @@ import org.json.{JSONArray, JSONObject}
 import scala.collection.mutable.ArrayBuffer
 
 object RunMain {
-  private var J = false
-  private var headless = true
-  private var evalRun = false
-  private var q = new Array[GameR](20)
-  private var z = new GameMap(7, 70, 7)
-  private var A = new GameMap(7, 70, 7)
-  private var n = new GameMap(7, 70, 7) //1 + 2 * lanesSide, patchesAhead + patchesBehind, 0
-  private var p = 0
-  private var y = 0
-  private var t = 1.5
-  private var E = 0
-  private var I = 0
-  private var B = 0
-  private var v = 0
-  private var w = 0
-  private var x = 0
+  private var J_0 = false
+  private var headless_0 = true
+  private var evalRun_0 = false
+  private var q_0 = new Array[GameAgent](20)
+  private var z_0 = new GameMap(7, 70, 7)
+  private var A_0 = new GameMap(7, 70, 7)
+  private var n_0 = new GameMap(7, 70, 7) //1 + 2 * lanesSide, patchesAhead + patchesBehind, 0
+  private var p_0 = 0
+  private var y_0 = 0
+  private var t_0 = 1.5
+  private var E_0 = 0
+  private var I_0 = 0
+  private var B_0 = 0
+  private var v_0 = 0
+  private var w_0 = 0
+  private var x_0 = 0
+  private var m_0 = 0
+  private var f_0 = false
+  private var k_0 = false
+  private var e_0 = false
+  private var l_0 = Array(0, 1, 2, 3, 4)
 
   def reset(): Unit = {
-    z = new GameMap(7, 70, 7)
-    A = new GameMap(7, 70, 7)
-    n = new GameMap(7, 70, 7) //1 + 2 * lanesSide, patchesAhead + patchesBehind, 0
-    q = new Array[GameR](20)
-    y = 0
-    t = 1.5
-    x = 0
-    w = 0
-    v = 0
-    B = 0
-    I = 0
-    E = 0
+    z_0 = new GameMap(7, 70, 7)
+    A_0 = new GameMap(7, 70, 7)
+    n_0 = new GameMap(7, 70, 7) //1 + 2 * lanesSide, patchesAhead + patchesBehind, 0
+    q_0 = new Array[GameAgent](20)
+    y_0 = 0
+    t_0 = 1.5
+    x_0 = 0
+    w_0 = 0
+    v_0 = 0
+    B_0 = 0
+    I_0 = 0
+    E_0 = 0
   }
 
   def L(): Unit = {
-    z.reset()
-    for (a <- q.indices) q(a).move(0 != a)
+    z_0.reset()
+    for (a <- q_0.indices) {
+      q_0(a).move(0 != a)
+      q_0(a).i(0)
+    }
+    t_0 = 1.5 - (q_0(0).y_1 - 525) / 1
+    for (a <- q_0.indices) {
+      q_0(a).l()
+      if (a != 0 && math.random > 0.99 + 0.004 * q_0(a).c_1)
+        q_0(a).g(if (0.5 < math.random) -1 else 1)
+    }
+    q_0(0).i(0)
+    if (f_0) {
+      A_0.reset()
+      q_0(0).o()
+    }
+    I_0 += q_0(0).c_1 * q_0(0).a_1
+    if (y_0 % 30 == 0) {
+      z_0.updateGameMap(n_0, 1, 1, 1, 1)
+      val a = learn(n_0.flatMap(), (I_0 - 60) / 20)
+      x_0 = 0
+      m_0 = 0
+      if (a >= 0 && a < l_0.length) {
+        a
+      } else {
+        B_0 = 0
+        I_0 = 0
+      }
+    }
+    q_0(0).j()
+    y_0 += 1
   }
 
   def doEvalRun(a: Int, b: Int, d: () => Unit, c: Int): Unit = {
     val h = c
-    headless = true
-    val c_1 = J
-    evalRun = true
-    J = true
+    headless_0 = true
+    val c_1 = J_0
+    evalRun_0 = true
+    J_0 = true
     var i_f = 0
     val i_g = new ArrayBuffer[Double]()
     for (i <- 0 until a) {
@@ -56,15 +90,15 @@ object RunMain {
       for (j <- 0 until b) {
         if (0 == i_f % h) d()
         //L()
-        j_g += q(0).c + q(0).a
+        j_g += q_0(0).c_1 + q_0(0).a_1
         i_f += 1
       }
       i_g += math.floor(j_g / b * 2E3) / 100
     }
     reset()
-    J = c_1
-    evalRun = false
-    headless = false
+    J_0 = c_1
+    evalRun_0 = false
+    headless_0 = false
     val sort = i_g.sorted
     i_g(a / 2)
   }
@@ -120,66 +154,202 @@ object RunMain {
 
   }
 
-  class GameMap(a: Int, b: Int, d: Int) {
-    private var data: Array[Array[Int]] = _
-    private val defaultValue = d
+  class GameMap(length: Int, width: Int, value: Double) {
+    private val defaultValue = value
+    private val data: Array[Array[Double]] = Array.ofDim(length, width).map(s => s.map(d => defaultValue))
 
-    def init(): Unit = {
-      data = Array.ofDim(a, b)
-      for (c <- 0 until a; g <- 0 until b) {
-        data(c)(g) = d
-      }
-    }
-
+    /**
+      * 恢复背景默认状态
+      */
     def reset(): Unit = {
       for (a <- data.indices; b <- data(a).indices) {
         data(a)(b) = defaultValue
       }
     }
 
-    def set(a: Int, b: Int, c: Int): Unit = {
-      0 <= a && a < this.data.length && 0 <= b && b < this.data(a).length && (this.data(a)(b) == c)
+    /**
+      * 把坐标为(i,j)的值设为value
+      *
+      * @param i     ith
+      * @param j     jth
+      * @param value 值v
+      */
+    def set(i: Int, j: Int, value: Double): Unit = {
+      if (0 <= i && i < this.data.length && 0 <= j && j < this.data(i).length)
+        this.data(i)(j) = value
     }
 
-    def get(a: Int, b: Int, c: Int): Int = {
-      if (0 <= a && a < this.data.length && 0 <= b && b < this.data(a).length) this.data(a)(b)
-      else c
+    /**
+      * 获取坐标(i,j)的值
+      *
+      * @param i       ith
+      * @param j       jth
+      * @param default 超出边界返回的值
+      * @return value
+      */
+    def get(i: Int, j: Int, default: Double): Double = {
+      if (0 <= i && i < this.data.length && 0 <= j && j < this.data(i).length)
+        this.data(i)(j)
+      else
+        default
     }
 
-    def m(): Unit = {
-      val a = n
+    /**
+      * 把总体运行背景输送给智能体所侦查的范围
+      *
+      * @param agent         目标智能体
+      * @param lanesSide     左右侦查范围
+      * @param patchesAhead  向前侦查的范围
+      * @param patchesBehind 向后侦查的范围
+      * @param position      目前所处的格子的位置
+      * @return GameMap
+      */
+    def updateGameMap(agent: GameMap, lanesSide: Int, patchesAhead: Int, patchesBehind: Int, position: Int): GameMap = {
+      for (g <- -lanesSide to lanesSide; u <- -patchesAhead until patchesBehind) {
+        val j = 3 * width / 4 + u
+        agent.data(g + lanesSide)(u + patchesAhead) = this.get(position + g, j, 0.0)
+      }
+      agent
+    }
 
+    /**
+      * 把地图matrix平铺成一个vector
+      *
+      * @return
+      */
+    def flatMap(): Array[Double] = {
+      val array = new Array[Double](this.data.length * this.data.head.length)
+      for (i <- this.data.indices; j <- this.data(i).indices) {
+        array(this.data.length * j + i) = this.data(i)(j) / 7
+      }
+      array
     }
   }
 
-  class GameR() {
-    var a = 1.0
-    var c = 1
-    var b = 0
-    var y = 10 * math.floor(700 * math.random / 10)
-    var x = 0
-    var f = new Array[Int](60)
+  class GameAgent() {
+    var a_1 = 1.0
+    var c_1 = 1.0
+    var b_1 = 0
+    var y_1: Double = 10 * math.floor(700 * math.random / 10)
+    var x_1 = 0
+    var f_1 = new Array[Double](60)
     this.init()
 
     def init(): Unit = {
       val a = (140 * math.random / 20).toInt
       val b = 1 + 0.7 * math.random
-      this.x = 20 * a + 4
-      this.a = b
-      this.b = a
+      this.x_1 = 20 * a + 4
+      this.a_1 = b
+      this.b_1 = a
     }
 
     def move(num: Boolean): Unit = {
-      val b = y - c * a - t
-      if (num && 525 > y && 525 <= b) {
-        v += 1
-        w += 1
-        x += 1
-      } else if (num && 525 < this.y && 525 >= b) {
-        v -= 1
-        w -= 1
-        x -= 1
+      val b = this.y_1 - this.c_1 * this.a_1 - t_0
+      if (num && 525 > y_1 && 525 <= b) {
+        v_0 += 1
+        w_0 += 1
+        x_0 += 1
+      } else if (num && 525 < this.y_1 && 525 >= b) {
+        v_0 -= 1
+        w_0 -= 1
+        x_0 -= 1
       }
+      this.y_1 = b
+      val index = y_0 % this.f_1.length
+      this.f_1(index) = this.c_1 * this.a_1 * 20
+      val temp = 20 * this.b_1 + 4 - this.x_1
+      this.x_1 = if (math.abs(temp) < 20 / 30) 20 * this.b_1 + 4 else if (0 < temp) this.x_1 + 20 / 30 else this.x_1 - 20 / 30
+      if (0 > this.y_1 + 68) {
+        this.y_1 = 734
+        this.init()
+      }
+      if (700 < this.y_1 - 68) {
+        this.y_1 = -34
+        this.init()
+      }
+    }
+
+    def i(a: Int): Unit = {
+      var b = 1
+      if (a == 1) b = 10
+      for (i <- 0 until 15 by 10; j <- 0 until 34 by 5)
+        z_0.set((this.x_1 + i) / 20, (this.y_1 + j).toInt / 10, b * this.c_1 * this.a_1.toInt)
+    }
+
+    def l(): Unit = {
+      var a = 2.0
+      for (b <- 1 until 5) {
+        val d = z_0.get((this.x_1 + 7.5).toInt / 20, (this.y_1 - 10 * b).toInt / 10, 7)
+        if (d < 7) {
+          a = math.min(a, 0.5 * (b - 1))
+          a = math.min(a, d / this.a_1)
+        }
+      }
+      this.c_1 = a.toInt
+    }
+
+    def g(a: Int): Boolean = {
+      val b = (this.x_1 + 7.5) / 20 + a
+      val d = this.y_1 / 10
+      var c = 0.5 > math.abs(this.x_1 - (20 * this.b_1 + 4))
+      for (h <- (3 * -this.a_1).toInt until 4) {
+        if (c) c = z_0.get(b.toInt, (d + h).toInt, 0) >= 7
+      }
+      if (c) this.b_1 += a
+      c
+    }
+
+    def o(): Unit = {
+      var a = true
+      for (b <- 1 until 5) {
+        val i = (this.x_1 + 7.5) / 20
+        val j = (this.y_1 - 10 * b) / 10
+        val default = if (a) 0 else 2
+        if (a) a = z_0.get(i.toInt, j.toInt, default) >= 7
+      }
+
+      for (b <- 1 until 5) {
+        val i = (this.x_1 + 7.5) / 20
+        val j = (this.y_1 - 10 * b) / 10
+        val default = if (a) 0 else 2
+        A_0.set(i.toInt, j.toInt, default)
+      }
+
+      var index_i = (this.x_1 + 7.5) / 20 - 1
+      var index_j = this.y_1 / 10
+      a = 0.5 > math.abs(this.x_1 - (20 * this.b_1 + 4))
+      for (b <- (3 * -this.a_1).toInt until 4) {
+        if (a) a = z_0.get(index_i.toInt, (index_j + b).toInt, 0) >= 7
+      }
+
+      for (b <- (3 * -this.a_1).toInt until 4) {
+        val default = if (a) 0 else 2
+        A_0.set(index_i.toInt, (index_j + b).toInt, default)
+      }
+
+      index_i = (this.x_1 + 7.5) / 20 + 1
+      a = 0.5 > math.abs(this.x_1 - (20 * this.b_1 + 4))
+      for (b <- (3 * -this.a_1).toInt until 4) {
+        if (a) a = z_0.get(index_i.toInt, (index_j + b).toInt, 0) >= 7
+      }
+      for (b <- (3 * -this.a_1).toInt until 4) {
+        val default = if (a) 0 else 2
+        A_0.set(index_i.toInt, (index_j + b).toInt, default)
+      }
+    }
+
+    def j(): Unit = {
+      m_0 match {
+        case 1 => if (this.a_1 > 2) this.a_1 += 0.02
+        case 2 => if (this.a_1 < 0) this.a_1 -= 0.02
+        case 3 => if (this.g(-1)) B_0 = 0; m_0 = 0
+        case 4 => if (this.g(1)) B_0 = 0; m_0 = 0
+      }
+    }
+
+    def s(): Int = {
+      val a = this.f_1.sum
+      (a / this.f_1.length).toInt
     }
   }
 
