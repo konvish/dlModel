@@ -11,7 +11,6 @@ object RunMain {
   private var q_0 = new Array[GameAgent](20)
   private var z_0 = new GameMap(7, 70, 7)
   private var A_0 = new GameMap(7, 70, 7)
-  private var n_0 = new GameMap(7, 70, 7) //1 + 2 * lanesSide, patchesAhead + patchesBehind, 0
   private var p_0 = 0
   private var y_0 = 0
   private var t_0 = 1.5
@@ -26,11 +25,55 @@ object RunMain {
   private var k_0 = false
   private var e_0 = false
   private var l_0 = Array(0, 1, 2, 3, 4)
+  private val lanesSide = 3
+  private val patchesAhead = 50
+  private val patchesBehind = 10
+  private val trainIterations = 10000
+  private val num_inputs = (lanesSide * 2 + 1) * (patchesAhead + patchesBehind)
+  private val num_actions = 5
+  private val temporal_window = 0
+  private val network_szie = num_inputs * temporal_window + num_actions * temporal_window + num_inputs
+  private var n_0 = new GameMap(1 + 2 * lanesSide, patchesAhead + patchesBehind, 0)
+  private var brain: DeepQLearnBrain = _
+
+  def initnet(): Unit = {
+    val layer_defs = new JSONArray()
+    val inputLayer = new JSONObject().put("type", "input").put("out_sx", 1).put("out_sy", 1).put("out_depth", network_szie)
+    layer_defs.put(inputLayer)
+    (0 to 3).foreach(i => {
+      layer_defs.put(new JSONObject().put("type", "fc").put("num_neurons", 24).put("activation", "tanh"))
+    })
+    layer_defs.put(new JSONObject().put("type", "regression").put("num_neurons", num_actions))
+
+    val tdtrainer_options = new JSONObject().put("learning_rate", 0.001).put("momentum", 0.0).put("batch_size", 128).put("l2_decay", 0.01)
+
+    val opt = new JSONObject()
+    opt.put("temporal_window", temporal_window)
+    opt.put("experience_size", 10000)
+    opt.put("start_learn_threshold", 5000)
+    opt.put("gamma", 0.98)
+    opt.put("learning_steps_total", 100000)
+    opt.put("learning_steps_burnin", 1000)
+    opt.put("epsilon_min", 0.0)
+    opt.put("epsilon_test_time", 0.0)
+    opt.put("layer_defs", layer_defs)
+    opt.put("tdtrainer_options", tdtrainer_options)
+
+    brain = new DeepQLearnBrain(num_actions, num_actions, opt)
+  }
+
+  def learn(state: Array[Double], lastReward: Int): Int = {
+    brain.backward(lastReward)
+    val action = brain.forward(state)
+    //draw_net()
+    //draw_stats()
+    action
+  }
 
   def reset(): Unit = {
     z_0 = new GameMap(7, 70, 7)
     A_0 = new GameMap(7, 70, 7)
-    n_0 = new GameMap(7, 70, 7) //1 + 2 * lanesSide, patchesAhead + patchesBehind, 0
+    n_0 = new GameMap(1 + 2 * lanesSide, patchesAhead + patchesBehind, 0)
     q_0 = new Array[GameAgent](20)
     y_0 = 0
     t_0 = 1.5
@@ -104,54 +147,15 @@ object RunMain {
   }
 
   def main(args: Array[String]): Unit = {
-    val lanesSide = 3
-    val patchesAhead = 50
-    val patchesBehind = 10
-    val trainIterations = 10000
-    val num_inputs = (lanesSide * 2 + 1) * (patchesAhead + patchesBehind)
-    val num_actions = 5
-    val temporal_window = 0
-    val network_szie = num_inputs * temporal_window + num_actions * temporal_window + num_inputs
-
-    val layer_defs = new JSONArray()
-    val inputLayer = new JSONObject().put("type", "input").put("out_sx", 1).put("out_sy", 1).put("out_depth", network_szie)
-    layer_defs.put(inputLayer)
-    (0 to 3).foreach(i => {
-      layer_defs.put(new JSONObject().put("type", "fc").put("num_neurons", 24).put("activation", "tanh"))
-    })
-    layer_defs.put(new JSONObject().put("type", "regression").put("num_neurons", num_actions))
-
-    val tdtrainer_options = new JSONObject().put("learning_rate", 0.001).put("momentum", 0.0).put("batch_size", 128).put("l2_decay", 0.01)
-
-    val opt = new JSONObject()
-    opt.put("temporal_window", temporal_window)
-    opt.put("experience_size", 10000)
-    opt.put("start_learn_threshold", 5000)
-    opt.put("gamma", 0.98)
-    opt.put("learning_steps_total", 100000)
-    opt.put("learning_steps_burnin", 1000)
-    opt.put("epsilon_min", 0.0)
-    opt.put("epsilon_test_time", 0.0)
-    opt.put("layer_defs", layer_defs)
-    opt.put("tdtrainer_options", tdtrainer_options)
-
-    val brain = new DeepQLearnBrain(num_actions, num_actions, opt)
-    val learn = (state: Array[Double], lastReward: Int) => {
-      brain.backward(lastReward)
-      val action = brain.forward(state)
-      //draw_net()
-      //draw_stats()
-      action
-    }
-
     if (trainIterations > 0) {
       val totalFrames = 30 * trainIterations
       val numRuns = totalFrames / 100000 + 1
-      val percent = 0
-
+      var percent = 0
+      doEvalRun(numRuns, totalFrames / numRuns, () => {
+        percent += 1
+      }, totalFrames / 100)
     }
     brain.learning = false
-
   }
 
   class GameMap(length: Int, width: Int, value: Double) {
