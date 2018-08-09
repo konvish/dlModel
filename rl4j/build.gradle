@@ -4,5 +4,6 @@ dependencies {
     compile 'org.deeplearning4j:rl4j-gym:1.0.0-beta'
     compile 'org.deeplearning4j:rl4j-ale:1.0.0-beta'
     compile 'org.deeplearning4j:rl4j-malmo:1.0.0-beta'
+    compile fileTree(dir: 'lib', include: ['*.jar'])
     compile 'com.microsoft.msr.malmo:MalmoJavaJar:0.30.0'
 }

@@ -33,9 +33,11 @@ class DeepQLearnBrain(num_states: Int,
                       num_actions: Int,
                       opt: JSONObject
                      ) {
-  //记录的偏移窗口
+  //记录的偏移窗口,即参考先前多少信息
   private val temporal_window = if (opt.isNull("temporal_window")) 1 else opt.getInt("temporal_window")
+  //经验积累数
   private val experience_size = if (opt.isNull("experience_size")) 30000 else opt.getInt("experience_size")
+  //
   private val start_learn_threshold = if (opt.isNull("start_learn_threshold")) math.floor(math.min(this.experience_size * 0.1, 1000)).toInt else opt.getInt("experience_size")
   private val gamma = if (opt.isNull("gamma")) 0.8 else opt.getDouble("gamma")
   private val learning_steps_total = if (opt.isNull("learning_steps_total")) 100000 else opt.getInt("learning_steps_total")
@@ -45,9 +47,9 @@ class DeepQLearnBrain(num_states: Int,
   private val random_action_distribution = if (opt.isNull("random_action_distribution")) Array() else opt.getString("random_action_distribution").split(",").map(_.toDouble)
   private val net_inputs = num_states * this.temporal_window + num_actions * this.temporal_window + num_states
   private val window_size = math.max(temporal_window, 2)
-  private var state_window = new Array[Int](window_size)
+  private var state_window = new Array[Double](window_size)
   private var action_window = new Array[Int](window_size)
-  private var reward_dindow = new Array[Int](window_size)
+  private var reward_dindow = new Array[Double](window_size)
   private var net_window = new Array[Array[Double]](window_size)
   private val layer_defs = if (opt.isNull("layers_defs")) {
     val result = new ArrayBuffer[JSONObject]()
@@ -80,7 +82,7 @@ class DeepQLearnBrain(num_states: Int,
   var age = 0
   var forward_passes = 0
   var epsilon = 1.0
-  var latest_reward = 0
+  var latest_reward = 0.0
   var last_input_array: Array[Double] = Array[Double]()
   val average_reward_window = new CNNUtil.Window(1000, 10)
   val average_loss_window = new CNNUtil.Window(1000, 10)
@@ -124,7 +126,7 @@ class DeepQLearnBrain(num_states: Int,
     for (k <- 0 until temporal_window) {
       w = w ++ Array(state_window(n - 1 - k))
       val action1ofk = new Array[Double](num_actions)
-      action1ofk(action_window(n - 1 - k)) = 1.0 * num_states
+      action1ofk(action_window(n - 1 - k).toInt) = 1.0 * num_states
       w = w ++ action1ofk
     }
     w
@@ -162,7 +164,7 @@ class DeepQLearnBrain(num_states: Int,
     action
   }
 
-  def backward(reward: Int): Unit = {
+  def backward(reward: Double): Unit = {
     latest_reward = reward
     average_reward_window.add(reward)
     reward_dindow = reward_dindow.tail

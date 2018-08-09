@@ -106,7 +106,7 @@ object ConvnetNet {
 
     if (fliplr) {
       val W2 = W.cloneAndZero()
-      for (x <- 0 until W.sx; y <- 0 until W.sy; d <- W.depth)
+      for (x <- 0 until W.sx; y <- 0 until W.sy; d <- 0 until W.depth)
         W2.set(x, y, d, W.get(W.sx - x - 1, y, d))
       W = W2
     }
@@ -121,7 +121,7 @@ object ConvnetNet {
   //  }
 
   class ConvLayer(opt: Properties) extends Layer {
-    private var out_depth = opt.getProperty("filters").toInt
+    out_depth = opt.getProperty("filters").toInt
     private var sx = opt.getProperty("sx").toInt
     private var in_depth = opt.getProperty("in_depth").toInt
     private val in_sx = opt.getProperty("in_sx").toInt
@@ -131,14 +131,13 @@ object ConvnetNet {
     private var pad = opt.getProperty("pad", "0").toInt
     private var l1_decay_mul = opt.getProperty("l1_decay_mul", "0.0").toDouble
     private var l2_decay_mul = opt.getProperty("l2_decay_mul", "1.0").toDouble
-    private var out_sx = math.floor((in_sx + pad * 2 - sx) / stride + 1).toInt
-    private var out_sy = math.floor((in_sy + pad * 2 - sy) / stride + 1).toInt
-    private var layer_type = "conv"
+    out_sx = math.floor((in_sx + pad * 2 - sx) / stride + 1).toInt
+    out_sy = math.floor((in_sy + pad * 2 - sy) / stride + 1).toInt
+    layer_type = "conv"
     private var bias = opt.getProperty("bias_pref", "0.0").toDouble
     private var filters = (0 until out_depth).map(i => new Vol(sx, sy, in_depth, 0.0)).toArray
     private var biases = new Vol(1, 1, out_depth, bias)
     private var in_act: Vol = _
-    private var out_act: Vol = _
 
     def forward(v: Vol, is_training: Boolean): Vol = {
       this.in_act = v
@@ -212,13 +211,12 @@ object ConvnetNet {
       }
     }
 
-    def getParamsAndGrads: Array[String] = {
-      val response = new ArrayBuffer[String]()
-      for (i <- 0 until out_depth) {
-        response += s"{\"params\":${this.filters(i).w.mkString(",")},\"grads\":${this.filters(i).dw.mkString(",")},\"l2_decay_mul\":${this.l2_decay_mul},\"l1_decay_mul\":${this.l1_decay_mul}}"
-      }
-      response += s"{\"params\":${this.biases.w.mkString(",")},\"grads\":${this.biases.dw.mkString(",")},\"l2_decay_mul\":0.0,\"l1_decay_mul\":0.0}"
-      response.toArray
+    def getParamsAndGrads: JSONArray = {
+      //      for (i <- 0 until out_depth) {
+      //        response += s"{\"params\":${this.filters(i).w.mkString(",")},\"grads\":${this.filters(i).dw.mkString(",")},\"l2_decay_mul\":${this.l2_decay_mul},\"l1_decay_mul\":${this.l1_decay_mul}}"
+      //      }
+      //      response += s"{\"params\":${this.biases.w.mkString(",")},\"grads\":${this.biases.dw.mkString(",")},\"l2_decay_mul\":0.0,\"l1_decay_mul\":0.0}"
+      new JSONArray()
     }
 
     def toJSON: JSONObject = {
@@ -268,18 +266,17 @@ object ConvnetNet {
   }
 
   class FullyConnLayer(opt: Properties) extends Layer {
-    private var out_depth = opt.getProperty("num_neurons").toInt
+    out_depth = opt.getProperty("num_neurons").toInt
     private var l1_decay_mul = opt.getProperty("l1_decay_mul", "0.0").toDouble
     private var l2_decay_mul = opt.getProperty("l2_decay_mul", "1.0").toDouble
     private var num_inputs = opt.getProperty("in_sx").toInt * opt.getProperty("in_sy").toInt * opt.getProperty("in_depth").toInt
-    private var out_sx = 1
-    private var out_sy = 1
-    private var layer_type = "fc"
+    out_sx = 1
+    out_sy = 1
+    layer_type = "fc"
     private var bias = opt.getProperty("bias_pref", "0.0").toDouble
     private var filters = (0 until out_depth).map(i => new Vol(1, 1, num_inputs, 0.0)).toArray
     private var biases = new Vol(1, 1, out_depth, bias)
     private var in_act: Vol = _
-    private var out_act: Vol = _
 
     def forward(v: Vol, is_training: Boolean): Vol = {
       in_act = v
@@ -312,13 +309,12 @@ object ConvnetNet {
       }
     }
 
-    def getParamsAndGrads: Array[String] = {
-      val response = new ArrayBuffer[String]()
-      for (i <- 0 until out_depth) {
-        response += s"{\"params\":${this.filters(i).w.mkString(",")},\"grads\":${this.filters(i).dw.mkString(",")},\"l2_decay_mul\":${this.l2_decay_mul},\"l1_decay_mul\":${this.l1_decay_mul}}"
-      }
-      response += s"{\"params\":${this.biases.w.mkString(",")},\"grads\":${this.biases.dw.mkString(",")},\"l2_decay_mul\":0.0,\"l1_decay_mul\":0.0}"
-      response.toArray
+    def getParamsAndGrads: JSONArray = {
+      //      for (i <- 0 until out_depth) {
+      //        response += s"{\"params\":${this.filters(i).w.mkString(",")},\"grads\":${this.filters(i).dw.mkString(",")},\"l2_decay_mul\":${this.l2_decay_mul},\"l1_decay_mul\":${this.l1_decay_mul}}"
+      //      }
+      //      response += s"{\"params\":${this.biases.w.mkString(",")},\"grads\":${this.biases.dw.mkString(",")},\"l2_decay_mul\":0.0,\"l1_decay_mul\":0.0}"
+      new JSONArray()
     }
 
     def toJSON: JSONObject = {
@@ -367,14 +363,13 @@ object ConvnetNet {
     private var in_sy = opt.getProperty("in_sy").toInt
     private var stride = opt.getProperty("stride", "2").toInt
     private var pad = opt.getProperty("pad", "0").toInt
-    private var out_depth = in_depth
-    private var out_sx = math.floor((in_sx + pad * 2 - sx) / stride + 1).toInt
-    private var out_sy = math.floor((in_sy + pad * 2 - sy) / stride + 1).toInt
-    private var layer_type = "pool"
+    out_depth = in_depth
+    out_sx = math.floor((in_sx + pad * 2 - sx) / stride + 1).toInt
+    out_sy = math.floor((in_sy + pad * 2 - sy) / stride + 1).toInt
+    layer_type = "pool"
     private var swithchx = new Array[Int](out_sx * out_sy * out_depth)
     private var swithchy = new Array[Int](out_sx * out_sy * out_depth)
     private var in_act: Vol = _
-    private var out_act: Vol = _
 
     def forward(v: Vol, is_training: Boolean): Vol = {
       in_act = v
@@ -469,16 +464,15 @@ object ConvnetNet {
 
     override def backward(y: Any): Double = 0.0
 
-    override def getParamsAndGrads: Array[String] = Array()
+    override def getParamsAndGrads: JSONArray = new JSONArray()
   }
 
   class InputLayer(opt: Properties) extends Layer {
-    private var out_depth = opt.getProperty("out_depth").toInt
-    private var out_sx = opt.getProperty("sx").toInt
-    private var out_sy = opt.getProperty("sy").toInt
-    private var layer_type = "input"
+    out_depth = opt.getProperty("out_depth").toInt
+    out_sx = opt.getProperty("sx").toInt
+    out_sy = opt.getProperty("sy").toInt
+    layer_type = "input"
     private var in_act: Vol = _
-    private var out_act: Vol = _
 
     def forward(v: Vol, is_training: Boolean): Vol = {
       in_act = v
@@ -507,18 +501,17 @@ object ConvnetNet {
 
     override def toString: String = toJSON.toString
 
-    override def getParamsAndGrads: Array[String] = Array()
+    override def getParamsAndGrads: JSONArray = new JSONArray()
   }
 
   class SoftmaxLayer(opt: Properties) extends Layer {
     private var num_inputs = opt.getProperty("in_sx").toInt * opt.getProperty("in_sy").toInt * opt.getProperty("in_depth").toInt
-    private var out_depth = num_inputs
-    private var out_sx = 1
-    private var out_sy = 1
-    private var layer_type = "softmax"
+    out_depth = num_inputs
+    out_sx = 1
+    out_sy = 1
+    layer_type = "softmax"
     private val es = new Array[Double](out_depth)
     private var in_act: Vol = _
-    private var out_act: Vol = _
 
     def forward(v: Vol, is_training: Boolean): Vol = {
       in_act = v
@@ -573,20 +566,19 @@ object ConvnetNet {
 
     override def toString: String = toJSON.toString
 
-    override def backward(y: Any): Unit = 0.0
+    override def backward(y: Any): Double = 0.0
 
-    override def getParamsAndGrads: Array[String] = Array()
+    override def getParamsAndGrads: JSONArray = new JSONArray()
   }
 
   class RegressionLayer(opt: Properties) extends Layer {
     private var num_inputs = opt.getProperty("in_sx").toInt * opt.getProperty("in_sy").toInt * opt.getProperty("in_depth").toInt
-    private var out_depth = num_inputs
-    private var out_sx = 1
-    private var out_sy = 1
-    private var layer_type = "regression"
+    out_depth = num_inputs
+    out_sx = 1
+    out_sy = 1
+    layer_type = "regression"
     private val es = new Array[Double](out_depth)
     private var in_act: Vol = _
-    private var out_act: Vol = _
 
     def forward(v: Vol, is_training: Boolean): Vol = {
       in_act = v
@@ -635,17 +627,16 @@ object ConvnetNet {
 
     override def toString: String = toJSON.toString
 
-    override def getParamsAndGrads: Array[String] = Array()
+    override def getParamsAndGrads: JSONArray = new JSONArray()
   }
 
   class SVMLayer(opt: Properties) extends Layer {
     private var num_inputs = opt.getProperty("in_sx").toInt * opt.getProperty("in_sy").toInt * opt.getProperty("in_depth").toInt
-    private var out_depth = num_inputs
-    private var out_sx = 1
-    private var out_sy = 1
-    private var layer_type = "svm"
+    out_depth = num_inputs
+    out_sx = 1
+    out_sy = 1
+    layer_type = "svm"
     private var in_act: Vol = _
-    private var out_act: Vol = _
 
     def forward(v: Vol, is_training: Boolean): Vol = {
       in_act = v
@@ -695,16 +686,15 @@ object ConvnetNet {
 
     override def backward(y: Any): Double = 0.0
 
-    override def getParamsAndGrads: Array[String] = Array()
+    override def getParamsAndGrads: JSONArray = new JSONArray()
   }
 
   class ReluLayer(opt: Properties) extends Layer {
-    private var out_depth = opt.getProperty("in_depth").toInt
-    private var out_sx = opt.getProperty("in_sx").toInt
-    private var out_sy = opt.getProperty("in_sy").toInt
-    private var layer_type = "relu"
+    out_depth = opt.getProperty("in_depth").toInt
+    out_sx = opt.getProperty("in_sx").toInt
+    out_sy = opt.getProperty("in_sy").toInt
+    layer_type = "relu"
     private var in_act: Vol = _
-    private var out_act: Vol = _
 
     def forward(v: Vol, is_training: Boolean): Vol = {
       in_act = v
@@ -748,16 +738,15 @@ object ConvnetNet {
 
     override def backward(y: Any): Double = 0.0
 
-    override def getParamsAndGrads: Array[String] = Array()
+    override def getParamsAndGrads: JSONArray = new JSONArray()
   }
 
   class SigmoidLayer(opt: Properties) extends Layer {
-    private var out_depth = opt.getProperty("in_depth").toInt
-    private var out_sx = opt.getProperty("in_sx").toInt
-    private var out_sy = opt.getProperty("in_sy").toInt
-    private var layer_type = "sigmoid"
+    out_depth = opt.getProperty("in_depth").toInt
+    out_sx = opt.getProperty("in_sx").toInt
+    out_sy = opt.getProperty("in_sy").toInt
+    layer_type = "sigmoid"
     private var in_act: Vol = _
-    private var out_act: Vol = _
 
     def forward(v: Vol, is_training: Boolean): Vol = {
       in_act = v
@@ -806,18 +795,17 @@ object ConvnetNet {
 
     override def backward(y: Any): Double = 0.0
 
-    override def getParamsAndGrads: Array[String] = Array()
+    override def getParamsAndGrads: JSONArray = new JSONArray()
   }
 
   class MaxoutLayer(opt: Properties) extends Layer {
     private var group_size = opt.getProperty("group_size", "2").toInt
-    private var out_depth = opt.getProperty("in_depth").toInt / group_size
-    private var out_sx = opt.getProperty("in_sx").toInt
-    private var out_sy = opt.getProperty("in_sy").toInt
-    private var layer_type = "maxout"
+    out_depth = opt.getProperty("in_depth").toInt / group_size
+    out_sx = opt.getProperty("in_sx").toInt
+    out_sy = opt.getProperty("in_sy").toInt
+    layer_type = "maxout"
     private var switches = new Array[Int](out_sx * out_sy * out_depth)
     private var in_act: Vol = _
-    private var out_act: Vol = _
 
     def forward(v: Vol, is_training: Boolean): Vol = {
       in_act = v
@@ -904,16 +892,15 @@ object ConvnetNet {
 
     override def backward(y: Any): Double = 0.0
 
-    override def getParamsAndGrads: Array[String] = Array()
+    override def getParamsAndGrads: JSONArray = new JSONArray()
   }
 
   class TanhLayer(opt: Properties) extends Layer {
-    private var out_depth = opt.getProperty("in_depth").toInt
-    private var out_sx = opt.getProperty("in_sx").toInt
-    private var out_sy = opt.getProperty("in_sy").toInt
-    private var layer_type = "tanh"
+    out_depth = opt.getProperty("in_depth").toInt
+    out_sx = opt.getProperty("in_sx").toInt
+    out_sy = opt.getProperty("in_sy").toInt
+    layer_type = "tanh"
     private var in_act: Vol = _
-    private var out_act: Vol = _
 
     def forward(v: Vol, is_training: Boolean): Vol = {
       in_act = v
@@ -958,18 +945,17 @@ object ConvnetNet {
 
     override def backward(y: Any): Double = 0.0
 
-    override def getParamsAndGrads: Array[String] = Array()
+    override def getParamsAndGrads: JSONArray = new JSONArray()
   }
 
   class DropoutLayer(opt: Properties) extends Layer {
-    private var out_depth = opt.getProperty("in_depth").toInt
-    private var out_sx = opt.getProperty("in_sx").toInt
-    private var out_sy = opt.getProperty("in_sy").toInt
-    private var layer_type = "dropout"
+    out_depth = opt.getProperty("in_depth").toInt
+    out_sx = opt.getProperty("in_sx").toInt
+    out_sy = opt.getProperty("in_sy").toInt
+    layer_type = "dropout"
     private var drop_prob = opt.getProperty("drop_prob", "0.5").toDouble
     private var dropped = new Array[Boolean](out_sx * out_sy * out_depth)
     private var in_act: Vol = _
-    private var out_act: Vol = _
 
     def forward(v: Vol, is_training: Boolean = false): Vol = {
       in_act = v
@@ -1026,7 +1012,7 @@ object ConvnetNet {
 
     override def backward(y: Any): Double = 0.0
 
-    override def getParamsAndGrads: Array[String] = Array()
+    override def getParamsAndGrads: JSONArray = new JSONArray()
   }
 
   class LocalResponseNormalizationLayer(opt: Properties) extends Layer {
@@ -1034,12 +1020,11 @@ object ConvnetNet {
     private var n = opt.getProperty("n").toInt
     private var alpha = opt.getProperty("alpha").toDouble
     private var beta = opt.getProperty("beta").toDouble
-    private var out_depth = opt.getProperty("in_depth").toInt
-    private var out_sx = opt.getProperty("in_sx").toInt
-    private var out_sy = opt.getProperty("in_sy").toInt
-    private var layer_type = "lrn"
+    out_depth = opt.getProperty("in_depth").toInt
+    out_sx = opt.getProperty("in_sx").toInt
+    out_sy = opt.getProperty("in_sy").toInt
+    layer_type = "lrn"
     private var in_act: Vol = _
-    private var out_act: Vol = _
     private var S_cache: Vol = _
 
     def forward(v: Vol, is_training: Boolean = false): Vol = {
@@ -1116,7 +1101,7 @@ object ConvnetNet {
 
     override def backward(y: Any): Double = 0.0
 
-    override def getParamsAndGrads: Array[String] = Array()
+    override def getParamsAndGrads: JSONArray = new JSONArray()
   }
 
   abstract class Layer() {
@@ -1134,7 +1119,7 @@ object ConvnetNet {
 
     def toJSON: JSONObject
 
-    def fromJSON(jSONObject: JSONObject)
+    def fromJSON(jSONObject: JSONObject): Layer
   }
 
   class Net() {
@@ -1418,7 +1403,7 @@ object ConvnetNet {
       val layer_defs = new ArrayBuffer[JSONObject]()
       layer_defs += new JSONObject().put("type", "input").put("out_sx", 1).put("out_sy", 1).put("out_depth", input_depth)
       val nl = weightedSample(Array(0, 1, 2, 3), Array(0.2, 0.3, 0.3, 0.2))
-      for (q <- nl) {
+      for (q <- 0 until nl.toInt) {
         val ni = randi(neurons_min, neurons_max)
         val ran = new Random().nextInt(3)
         val m = Array("tanh", "maxout", "relu")
@@ -1476,7 +1461,7 @@ object ConvnetNet {
         var v = 0.0
         val test_ix = fold.getJSONArray("test_ix")
         for (q <- 0 until test_ix.length()) {
-          val x = data(test_ix.get(q).asInstanceOf[Vol])
+          val x = test_ix.get(q).asInstanceOf[Vol]
           val l = labels(test_ix.getInt(q))
           net.forward(x)
           val yhat = net.getPrediction
@@ -1576,7 +1561,7 @@ object ConvnetNet {
       var predicted_label = -1
       if (xout.w.length != 0) {
         val stats = maxmin(xout.w)
-        predicted_label = stats.getOrElse("maxi", 0).toInt
+        predicted_label = stats.getOrElse("maxi", 0.0).toInt
       }
       predicted_label
     }

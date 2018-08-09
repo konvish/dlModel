@@ -73,9 +73,7 @@ object ComGraphLSTMExample {
 
     val conf = new NeuralNetConfiguration.Builder()
       .optimizationAlgo(OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT)
-      .learningRate(0.1)
       .seed(12345)
-      .regularization(true)
       .l2(0.001)
       .weightInit(WeightInit.XAVIER)
       .graphBuilder()

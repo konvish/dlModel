@@ -3,8 +3,7 @@ package scala
 import java.io.{File, IOException}
 import java.nio.charset.Charset
 import java.nio.file.Files
-import java.util
-import java.util.{Collections, Random}
+import java.util.{Collections, Random, Map, LinkedList, HashMap, List}
 
 import org.nd4j.linalg.dataset.DataSet
 import org.nd4j.linalg.dataset.api.DataSetPreProcessor
@@ -15,12 +14,12 @@ import scala.collection.mutable.ArrayBuffer
 
 class CharacterIterator extends DataSetIterator {
   private var validCharacters: Array[Char] = _
-  private var charToIdxMap: util.Map[Character, Int] = _
+  private var charToIdxMap: Map[Character, Int] = _
   private var fileCharacters: Array[Char] = _
   private var exampleLength = 0
   private var miniBatchSize = 0
   private var rng: Random = _
-  private var exampleStartOffsets: util.LinkedList[Int] = new util.LinkedList[Int]()
+  private var exampleStartOffsets: LinkedList[Int] = new LinkedList[Int]()
 
   @throws[IOException]
   def this(textFilePath: String, textFileEncoding: Charset, miniBatchSize: Int, exampleLength: Int
@@ -33,7 +32,7 @@ class CharacterIterator extends DataSetIterator {
     this.miniBatchSize = miniBatchSize
     this.rng = rng
 
-    charToIdxMap = new util.HashMap[Character, Int]()
+    charToIdxMap = new HashMap[Character, Int]()
 
     for (i <- validCharacters.indices) charToIdxMap.put(validCharacters(i), i)
 
@@ -117,7 +116,7 @@ class CharacterIterator extends DataSetIterator {
 
   override def totalOutcomes(): Int = validCharacters.length
 
-  override def getLabels: util.List[String] = {
+  override def getLabels: java.util.List[String] = {
     throw new UnsupportedOperationException("Not implemented")
   }
 

@@ -1,7 +1,7 @@
 configure(allprojects) {
     ext.scalaVersion = "2.11.8"
     ext.sparkVersion = "2.0.1"
-    ext.deeplearning4jVersion = "0.9.1"
+    ext.deeplearning4jVersion = "1.0.0-beta"
     ext.bigdlVersion = "0.2.0"
-    ext.nd4jVersion = "0.9.1"
+    ext.nd4jVersion = "1.0.0-beta"
 }

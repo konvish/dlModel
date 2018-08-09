@@ -1,7 +1,7 @@
 package cn.sibat.datavec.java.inputsplit;
 
 import org.datavec.api.split.FileSplit;
-import org.datavec.api.util.ClassPathResource;
+import org.nd4j.linalg.io.ClassPathResource;
 
 import java.io.File;
 import java.io.IOException;

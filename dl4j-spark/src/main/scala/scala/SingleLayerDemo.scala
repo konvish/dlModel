@@ -1,7 +1,7 @@
 package scala
 
 import org.nd4j.linalg.api.ndarray.INDArray
-import org.nd4j.linalg.api.ops.impl.transforms.{Log, Sigmoid}
+import org.nd4j.linalg.api.ops.impl.transforms.{Log, Sigmoid, SigmoidDerivative}
 import org.nd4j.linalg.factory.Nd4j
 
 class SingleLayerDemo(var weight_1: INDArray, var weight_2: INDArray, var bias_1: INDArray, var bias_2: INDArray) {
@@ -38,7 +38,8 @@ class SingleLayerDemo(var weight_1: INDArray, var weight_2: INDArray, var bias_1
     for (i <- 0 until label.length()) {
       val z_1 = trainData.getRow(i).mmul(weight_1.transpose()).add(bias_1.transpose()) //1*3
       val a_1 = Nd4j.getExecutioner.execAndReturn(new Sigmoid(z_1.dup())) //1*3
-      val dga_1 = Nd4j.getExecutioner.execAndReturn(new Sigmoid(z_1.dup()).derivative()) //1*3
+      Nd4j.getExecutioner.execAndReturn(new Sigmoid(z_1.dup()))
+      val dga_1 = Nd4j.getExecutioner.execAndReturn(new SigmoidDerivative(z_1.dup())) //1*3
       val z_2 = a_1.mmul(weight_2.transpose()).add(bias_2) //1*1
       val a_2 = Nd4j.getExecutioner.execAndReturn(new Sigmoid(z_2.dup())) //1*1
       val dz_2 = a_2.dup().sub(label.getRow(i)) //1*1

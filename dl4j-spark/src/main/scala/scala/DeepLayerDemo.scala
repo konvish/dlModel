@@ -1,7 +1,7 @@
 package scala
 
 import org.nd4j.linalg.api.ndarray.INDArray
-import org.nd4j.linalg.api.ops.impl.transforms.{Log, Sigmoid}
+import org.nd4j.linalg.api.ops.impl.transforms.{Log, Sigmoid, SigmoidDerivative}
 import org.nd4j.linalg.factory.Nd4j
 
 /**
@@ -58,7 +58,7 @@ class DeepLayerDemo(n: Int, array: Array[Int]) {
     for (i <- 0 until n) {
       z(i) = a(i).mmul(weight(i)).addRowVector(bias(i)) //10*1
       a(i + 1) = Nd4j.getExecutioner.execAndReturn(new Sigmoid(z(i).dup()))
-      da(i) = Nd4j.getExecutioner.execAndReturn(new Sigmoid(z(i).dup()).derivative())
+      da(i) = Nd4j.getExecutioner.execAndReturn(new SigmoidDerivative(z(i).dup()))
     }
 
     for (i <- n - 1 to 0 by -1) {
@@ -100,7 +100,7 @@ class DeepLayerDemo(n: Int, array: Array[Int]) {
       for (j <- 0 until n) {
         z(j) = a(j).mmul(weight(j)).add(bias(j)) //1*3
         a(j + 1) = Nd4j.getExecutioner.execAndReturn(new Sigmoid(z(j).dup())) //1*3
-        da(j) = Nd4j.getExecutioner.execAndReturn(new Sigmoid(z(j).dup()).derivative()) //1*3
+        da(j) = Nd4j.getExecutioner.execAndReturn(new SigmoidDerivative(z(j).dup())) //1*3
       }
       for (j <- n - 1 to 0 by -1) {
         if (j == n - 1) {

@@ -15,7 +15,7 @@ object RunMain {
   private var y_0 = 0
   private var t_0 = 1.5
   private var E_0 = 0
-  private var I_0 = 0
+  private var I_0 = 0.0
   private var B_0 = 0
   private var v_0 = 0
   private var w_0 = 0
@@ -105,7 +105,7 @@ object RunMain {
     I_0 += q_0(0).c_1 * q_0(0).a_1
     if (y_0 % 30 == 0) {
       z_0.updateGameMap(n_0, 1, 1, 1, 1)
-      val a = learn(n_0.flatMap(), (I_0 - 60) / 20)
+      val a = learn(n_0.flatMap(), (I_0.toInt - 60) / 20)
       x_0 = 0
       m_0 = 0
       if (a >= 0 && a < l_0.length) {
@@ -160,7 +160,13 @@ object RunMain {
 
   class GameMap(length: Int, width: Int, value: Double) {
     private val defaultValue = value
-    private val data: Array[Array[Double]] = Array.ofDim(length, width).map(s => s.map(d => defaultValue))
+    private val data: Array[Array[Double]] = Array.ofDim(length, width)
+
+    def init(): Unit = {
+      for (a <- data.indices; b <- data(a).indices) {
+        data(a)(b) = defaultValue
+      }
+    }
 
     /**
       * 恢复背景默认状态
