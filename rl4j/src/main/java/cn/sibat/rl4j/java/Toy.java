@@ -12,6 +12,8 @@ import org.deeplearning4j.rl4j.mdp.toy.SimpleToy;
 import org.deeplearning4j.rl4j.mdp.toy.SimpleToyState;
 import org.deeplearning4j.rl4j.network.dqn.DQNFactoryStdDense;
 import org.deeplearning4j.rl4j.network.dqn.IDQN;
+import org.deeplearning4j.rl4j.policy.DQNPolicy;
+import org.deeplearning4j.rl4j.policy.Policy;
 import org.deeplearning4j.rl4j.space.DiscreteSpace;
 import org.deeplearning4j.rl4j.util.DataManager;
 import org.nd4j.linalg.learning.config.Adam;
