@@ -84,14 +84,13 @@ object SelectT {
     val line = "-," * (n_states - 1)
     val env_list = line.split(",") ++ Array("T")
     if (S == -1) {
-      print(s"Episode ${episode + 1}: total_steps = $step_counter")
+      print(s"\rEpisode ${episode + 1}: total_steps = $step_counter")
       Thread.sleep(1000)
       print("\r")
     } else {
       env_list(S) = "o"
-      print(env_list.mkString(""))
+      print("\r" + env_list.mkString(""))
       Thread.sleep(300)
-      print("\r")
     }
   }
 
