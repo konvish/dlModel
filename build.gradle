@@ -67,7 +67,8 @@ subprojects {
     /*类库配置*/
     repositories {
         /**maven的私库*/
-        repositories { maven { url 'http://download.osgeo.org/webdav/geotools/' } }
+        //repositories { maven { url 'http://download.osgeo.org/webdav/geotools/' } }
+        repositories { maven { url 'http://maven.aliyun.com/nexus/content/groups/public/' } }
         // mavenLocal()
         /*默认库*/
         mavenCentral()
