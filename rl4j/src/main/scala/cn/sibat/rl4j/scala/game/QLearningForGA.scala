@@ -1,13 +1,15 @@
 package cn.sibat.rl4j.scala.game
 
-object SelectT {
+import scala.util.Random
 
-  val n_states = 6 //多少种状态
-  val action = Array("left", "right") //行为
+object QLearningForGA {
+  val n_states = 9 //多少种状态
+  val action: Range.Inclusive = 0 to 8 //行为
   val epsilon = 0.9 //选择行为的概率，0.9代表90%的概率选择学习后的结果，10%的概率选择随机行为
-  val learning_rate = 0.1 // 学习率
+  val learning_rate = 0.001 // 学习率 //bestOne:0.01+1000000 or 0.001+100000
   val gama = 0.9 //状态衰减率
-  val max_learn = 13 //学习次数
+  val max_learn = 100000 //学习次数
+  val bestOne: Array[Int] = new Array[Int](action.length).map(_ - 1)
 
   /**
     * 建立Q-table
@@ -16,7 +18,7 @@ object SelectT {
     * @param action   动作
     * @return q-table
     */
-  def build_q_table(n_states: Int, action: Array[String]): Array[Array[Double]] = {
+  def build_q_table(n_states: Int, action: Array[Int]): Array[Array[Double]] = {
     val table = Array.ofDim[Double](n_states, action.length)
     table
   }
@@ -28,17 +30,25 @@ object SelectT {
     * @param q_table q-table
     * @return 选择的行为
     */
-  def choose_action(state: Int, q_table: Array[Array[Double]]): String = {
+  def choose_action(state: Int, q_table: Array[Array[Double]]): Int = {
     //1.当状态对应的行为的概率
     val state_actions = q_table(state)
-    var action_name = ""
+    var action_name = -1
     //2. 选随机数 > epsilon 或者 处于初始化状态，随机选取行为
     if (math.random > epsilon || state_actions.forall(_ == 0.0)) {
-      val choice = if (math.random > 0.5) 0 else 1
+      val choice = new Random().nextInt(action.length)
       action_name = action(choice)
     } else {
       //3. 非2的情况下，选取概率最大的行为
-      action_name = action(state_actions.indexOf(state_actions.max))
+      val sorted = state_actions.clone().zipWithIndex.sortBy(_._1)
+      action_name = sorted.maxBy(_._1)._2
+      var temp = bestOne.contains(action_name)
+      var count = sorted.length
+      while (temp) {
+        action_name = sorted(count - 1)._2
+        temp = bestOne.contains(action_name)
+        count -= 1
+      }
     }
     action_name
   }
@@ -50,25 +60,25 @@ object SelectT {
     * @param A 行为
     * @return (下一状态，奖励)
     */
-  def get_env_feedback(S: Int, A: String): (Int, Int) = {
+  def get_env_feedback(S: Int, A: Int): (Int, Double) = {
     var S_ = 0
-    var R = 0
+    var R = 0.0
     //1.行为右移，终点的前一位置，右移得分，下一状态为终止，正向奖励，否则，下一状态右移，不做奖励
-    if (A.equals("right")) {
-      if (S == n_states - 2) {
+    if (bestOne.contains(-1)) {
+      R = 0.0
+      S_ = A
+      if (!bestOne.contains(S))
+        bestOne(bestOne.indexOf(-1)) = S
+    }
+    if (!bestOne.contains(-1)) {
+      if (bestOne.distinct.length == bestOne.length) {
         S_ = -1
-        R = 1
-      } else {
-        S_ = S + 1
-        R = 0
+        if (bestOne.mkString(",").equals("0,1,2,3,4,5,6,7,8")) {
+          R = 10.0 //10-1000,都成功了
+        } else
+          R = 1.0
       }
       //2. 行为左移，起点位置，左移还为起点，其他状态左移，不做奖励
-    } else {
-      R = 0
-      if (S == 0)
-        S_ = S
-      else
-        S_ = S - 1
     }
     (S_, R)
   }
@@ -94,6 +104,12 @@ object SelectT {
     }
   }
 
+  def resetBestOne(): Unit = {
+    for (i <- bestOne.indices) {
+      bestOne(i) = -1
+    }
+  }
+
   /**
     * 学习程序
     *
@@ -101,13 +117,14 @@ object SelectT {
     */
   def learn(): Array[Array[Double]] = {
     //1. 构建Q-table
-    val q_table = build_q_table(n_states, action)
+    val q_table = build_q_table(n_states, action.toArray)
     //2. repeat
     for (epsilon <- 0 to max_learn) {
       var step_counter = 0
-      var S = 0
+      var S = new Random().nextInt(action.length)
       var is_terminated = false
-      update_env(S, epsilon, step_counter)
+      resetBestOne()
+      //update_env(S, epsilon, step_counter)
       while (!is_terminated) {
         //3. loop:当前状态选择行为
         val A = choose_action(S, q_table)
@@ -126,7 +143,7 @@ object SelectT {
         //7. loop:更新q-table
         q_table(S)(action.indexOf(A)) += learning_rate * (q_target - q_predict)
         S = next_states._1
-        update_env(S, epsilon, step_counter + 1)
+        //update_env(S, epsilon, step_counter + 1)
         step_counter += 1
       }
     }
@@ -136,5 +153,8 @@ object SelectT {
   def main(args: Array[String]): Unit = {
     val qtable = learn()
     qtable.foreach(s => println(s.mkString(",")))
+    qtable.foreach(s => {
+      println(s.indexOf(s.max))
+    })
   }
 }
