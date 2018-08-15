@@ -56,7 +56,7 @@ class Maze extends JFrame {
 
     update(base_action)
 
-    val s_ = rect
+    val s_ = rect.clone()
     val origin = Array(70, 70)
     val hell1_center = Array(origin(0) + w * 2, origin(1) + w)
     val hell2_center = Array(origin(0) + w, origin(1) + w * 2)
