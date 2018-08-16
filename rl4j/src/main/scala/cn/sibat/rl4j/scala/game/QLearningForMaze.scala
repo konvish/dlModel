@@ -44,7 +44,7 @@ class QLearningForMaze(actions: Array[Int]) {
     val array = q_table.getOrElse(s, Array())
     val q_predict = array(a)
     var q_target = 0.0
-    if (!(s_1.equals("150,150") || s_1.equals("150,110") || s_1.equals("110,150"))) {
+    if (!s_1.equals("-1,-1")) {
       q_target = r + q_table.getOrElse(s_1, Array()).max
     } else
       q_target = r

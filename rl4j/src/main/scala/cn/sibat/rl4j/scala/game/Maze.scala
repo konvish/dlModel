@@ -66,13 +66,13 @@ class Maze extends JFrame {
     if (s_(0) == oval_center(0) && s_(1) == oval_center(1)) {
       reward = 1
       done = true
-      s_(0) = rect(0)
-      s_(1) = rect(1)
+      s_(0) = -1
+      s_(1) = -1
     } else if ((s_(0) == hell1_center(0) && s_(1) == hell1_center(1)) || (s_(0) == hell2_center(0) && s_(1) == hell2_center(1))) {
       reward = -1
       done = true
-      s_(0) = rect(0)
-      s_(1) = rect(1)
+      s_(0) = -1
+      s_(1) = -1
     }
     (s_, reward, done)
   }
