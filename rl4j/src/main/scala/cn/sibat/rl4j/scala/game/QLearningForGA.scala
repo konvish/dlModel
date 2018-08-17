@@ -3,13 +3,13 @@ package cn.sibat.rl4j.scala.game
 import scala.util.Random
 
 object QLearningForGA {
-  val n_states = 9 //多少种状态
-  val action: Range.Inclusive = 0 to 8 //行为
+  val n_states = 9 //多少种基因
+  val action: Range.Inclusive = 0 to 8 //基因拼接数
   val epsilon = 0.9 //选择行为的概率，0.9代表90%的概率选择学习后的结果，10%的概率选择随机行为
   val learning_rate = 0.001 // 学习率 //bestOne:0.01+1000000 or 0.001+100000
   val gama = 0.9 //状态衰减率
   val max_learn = 100000 //学习次数
-  val bestOne: Array[Int] = new Array[Int](action.length).map(_ - 1)
+  val bestOne: Array[Int] = new Array[Int](action.length).map(_ - 1) //最优染色体
 
   /**
     * 建立Q-table
